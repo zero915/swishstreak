@@ -1,0 +1,22 @@
+---
+description: Swish Streak project conventions and architecture
+alwaysApply: true
+---
+
+# Swish Streak
+
+Expo SDK 56 + TypeScript basketball game. Read `AGENTS.md` and `README.md` for full context.
+
+## Conventions
+
+- Minimal diffs; reuse `gameConfig.ts`, `hoopGeometry.ts`, `gameSizing.ts` — do not duplicate magic numbers.
+- Physics rim Y = `getPhysicsRimCenterY(hoopY)` from `hoopSpriteLayout.ts`; visuals use same offset via `RIM_VISUAL_DROP`.
+- Hoop renders as **back layer → Ball (child) → net layer** in `Hoop.tsx`.
+- Scoring lives only in `ballPhysics.ts` `tryScore()` — not in components.
+- Shop/sprites: `gameAssets.ts` + `shopCatalog.ts`; procedural fallbacks when images missing.
+
+## Do not
+
+- Commit `.env` or API keys.
+- Move physics rim without matching visual rim lip.
+- Add a second back button on GameScreen (use `GameHUD` `onBack`).

@@ -1,0 +1,16 @@
+---
+description: React Native UI patterns for Swish Streak
+globs: src/**/*.tsx
+alwaysApply: false
+---
+
+# React Native UI
+
+- Functional components; hooks for logic (`useGameSession`, contexts).
+- Animations: **react-native-reanimated** shared values; avoid animating layout on JS thread during flight.
+- Gestures: **react-native-gesture-handler** `Gesture.Pan()` in `Ball.tsx`; `runOnJS` for shot start.
+- Styles: co-located `StyleSheet.create`; theme from `src/constants/theme.ts`.
+- Safe area: `useSafeAreaInsets()` on full-screen overlays (GameHUD).
+- z-index: HUD 30, net 12, ball 8–13, hoop back 7, court background 0.
+
+Keep touch targets ≥ 48; game allows next shot during celebration exit animation.

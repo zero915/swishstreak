@@ -1,0 +1,25 @@
+---
+description: Ball physics, trajectory, and scoring rules
+globs: src/utils/ballPhysics.ts,src/utils/trajectory.ts,src/utils/hoopGeometry.ts,src/constants/gameConfig.ts
+alwaysApply: false
+---
+
+# Game physics
+
+## Scoring (`tryScore`)
+
+- Use perspective-scaled radius via `effectiveBallRadius()`.
+- Lip crossing: `segmentCrosses()` on ball top/bottom vs `geo.rimTop`.
+- Centered shots (`centerDist <= innerHalf * 0.42`): wider h-margin, skip harsh ascent overshoot guard.
+- Descent overshoot: reject if `peakY < rimTop - radius * 2.4` (off-center only).
+- Ascent overshoot: reject if projected peak `< rimTop - radius * 2.4` (off-center only).
+
+## Trajectory
+
+- Intensity from flick: `flickMag * VELOCITY_SCALE / 520`.
+- Sweet band ~0.35–0.68 uses flat `peakRiseFactor` 1.08; soft/hard tails miss.
+- Preserve arc height when clamping speed — trim `vx` first, not `vy`.
+
+## Testing
+
+After changes, mentally verify: soft miss, mid swish, hard miss, angled rim bounce.

@@ -1,0 +1,25 @@
+---
+description: Expo SDK 56 and dependency constraints
+alwaysApply: true
+---
+
+# Expo SDK 56
+
+Docs: https://docs.expo.dev/versions/v56.0.0/
+
+## Stack
+
+- expo ~56, react-native 0.85, react 19.2
+- react-native-reanimated 4.3.1 + react-native-worklets 0.8.3 (required pair)
+- react-native-gesture-handler ~2.31.1
+- @react-native-async-storage/async-storage 2.2.0
+
+## Dev
+
+- Handheld testing: `npm run start:tunnel` or `npx expo start -c --tunnel`
+- `EXPO_UNSTABLE_HEADLESS=1` set in default start script
+- Do not bump SDK or Reanimated without user approval and doc review
+
+## Env
+
+Firebase keys use `EXPO_PUBLIC_*` in `.env` (see `.env.example`). Guest mode works without Firebase.

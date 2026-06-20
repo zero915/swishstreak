@@ -1,0 +1,30 @@
+---
+description: Hoop sprite layering and ball depth
+globs: src/components/Hoop.tsx,src/components/Ball.tsx,src/utils/hoopSpriteLayout.ts
+alwaysApply: false
+---
+
+# Hoop visual layering
+
+## Split render
+
+1. **Back** (`hoopBackLayer` z7): backboard + rim clip from `rim_net` sprite (or procedural rim).
+2. **Ball** (child of Hoop in GameScreen): z13 front / z8 behind net.
+3. **Net** (`hoopNetLayer` z12): net-only clip; screen `top = containerTop + netFrontOffsetY`.
+
+## Critical
+
+```typescript
+// ✅ Net screen position
+top: containerTop + rimClip.netFrontOffsetY
+
+// ❌ Wrong — container-relative Y used as screen Y
+top: rimClip.netFrontOffsetY
+```
+
+## Ball on score
+
+- Set `behindNet = 1` when `state.scored && state.y > geo.rimTop - ballRadius * 0.15`.
+- Continue physics until ball passes rim, then `runScoreExit` drops through `geo.netBottom`.
+
+Physics uses `getPhysicsRimCenterY(hoopY)` in Ball for geometry, trajectory, and perspective.
