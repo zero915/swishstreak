@@ -15,7 +15,7 @@ export interface SwipeInput extends SwipeVector {
   velocityY?: number;
 }
 
-export interface PovShotInput extends SwipeVector {
+export interface PovShotInput extends SwipeInput {
   launchX: number;
   launchY: number;
   hoopX: number;

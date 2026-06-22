@@ -68,7 +68,7 @@ function BallGraphic({
     return (
       <Image
         source={imageSource}
-        style={{ width: size, height: size }}
+        style={{ width: size, height: size, backgroundColor: 'transparent' }}
         resizeMode="contain"
       />
     );

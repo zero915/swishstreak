@@ -10,7 +10,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { RIM_INNER_FRACTION } from '../constants/gameConfig';
+import { getBackboardTheme } from '../constants/backboardThemes';
+import { GAME_ASSETS } from '../constants/gameAssets';
 import { getShopItem } from '../constants/shopCatalog';
+import { BackboardFace } from './BackboardFace';
 import { getContainerTop, getHoopMetrics } from '../utils/hoopGeometry';
 import { getHoopSpriteLayout, getRimNetClipHeights, RIM_NET_LIP_RATIO } from '../utils/hoopSpriteLayout';
 
@@ -135,8 +138,10 @@ export function Hoop({
 }: HoopProps) {
   const shopItem = getShopItem(backboardId);
   const boardImage = shopItem?.backboardImage;
-  const rimNetImage = shopItem?.rimNetImage;
-  const useSprites = Boolean(boardImage && rimNetImage);
+  const rimNetImage = shopItem?.rimNetImage ?? GAME_ASSETS.hoop.rimNetClassic;
+  const boardTheme = getBackboardTheme(backboardId);
+  const useBoardSprite = Boolean(boardImage);
+  const useSprites = Boolean(rimNetImage);
 
   const m = getHoopMetrics(rimWidth);
   const sprite = getHoopSpriteLayout(rimWidth);
@@ -224,7 +229,7 @@ export function Hoop({
           ]}
         />
 
-        {useSprites ? (
+        {useBoardSprite ? (
           <Image
             source={boardImage}
             style={{
@@ -235,6 +240,17 @@ export function Hoop({
               alignSelf: 'center',
             }}
             resizeMode="stretch"
+          />
+        ) : boardTheme ? (
+          <BackboardFace
+            width={useSprites ? sprite.boardVisualWidth : m.boardWidth}
+            height={useSprites ? sprite.boardVisualHeight : m.boardHeight}
+            theme={boardTheme}
+            style={{
+              position: 'absolute',
+              top: useSprites ? sprite.boardTop : 0,
+              alignSelf: 'center',
+            }}
           />
         ) : (
           <>

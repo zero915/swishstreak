@@ -7,6 +7,11 @@ export const GAME_ASSETS = {
   },
   ball: {
     classic: require('../../assets/images/ball/ball_classic.png') as ImageSourcePropType,
+    ice: require('../../assets/images/ball/ball_ice.png') as ImageSourcePropType,
+    candy: require('../../assets/images/ball/ball_candy.png') as ImageSourcePropType,
+    fire: require('../../assets/images/ball/ball_fire.png') as ImageSourcePropType,
+    gold: require('../../assets/images/ball/ball_gold.png') as ImageSourcePropType,
+    galaxy: require('../../assets/images/ball/ball_galaxy.png') as ImageSourcePropType,
   },
   hoop: {
     backboardClassic: require('../../assets/images/hoop/backboard_classic.png') as ImageSourcePropType,
@@ -32,6 +37,6 @@ export function resolveBackboardImages(
 ): { board?: ImageSourcePropType; rimNet?: ImageSourcePropType } {
   return {
     board: backboardImage,
-    rimNet: rimNetImage,
+    rimNet: rimNetImage ?? GAME_ASSETS.hoop.rimNetClassic,
   };
 }

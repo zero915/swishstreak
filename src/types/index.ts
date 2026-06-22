@@ -2,6 +2,16 @@ import { ImageSourcePropType } from 'react-native';
 
 export type ShopCategory = 'balls' | 'backboards' | 'backgrounds';
 
+export type BackboardEffect = 'stars' | 'blizzard' | 'fire' | 'cracks' | 'bones' | 'clouds';
+
+export interface BackboardTheme {
+  gradient: [string, string, string];
+  frameColor: string;
+  targetFill: string;
+  targetBorder: string;
+  effect?: BackboardEffect;
+}
+
 export interface ShopItem {
   id: string;
   category: ShopCategory;

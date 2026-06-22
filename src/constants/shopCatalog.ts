@@ -1,7 +1,10 @@
 import { ShopItem } from '../types';
 import { GAME_ASSETS } from './gameAssets';
 
+const RIM_NET = GAME_ASSETS.hoop.rimNetClassic;
+
 export const SHOP_CATALOG: ShopItem[] = [
+  // —— Balls (galaxy = most expensive) ——
   {
     id: 'ball-classic',
     category: 'balls',
@@ -11,24 +14,150 @@ export const SHOP_CATALOG: ShopItem[] = [
     defaultUnlocked: true,
     imageSource: GAME_ASSETS.ball.classic,
   },
-  { id: 'ball-ice', category: 'balls', name: 'Ice Blue', cost: 50, color: '#4FC3F7' },
-  { id: 'ball-fire', category: 'balls', name: 'Fire Red', cost: 150, color: '#EF5350' },
-  { id: 'ball-gold', category: 'balls', name: 'Gold', cost: 400, color: '#FFD54F' },
+  {
+    id: 'ball-ice',
+    category: 'balls',
+    name: 'Blizzard Ice',
+    cost: 75,
+    color: '#4FC3F7',
+    imageSource: GAME_ASSETS.ball.ice,
+  },
+  {
+    id: 'ball-candy',
+    category: 'balls',
+    name: 'Candy Swirl',
+    cost: 150,
+    color: '#F48FB1',
+    imageSource: GAME_ASSETS.ball.candy,
+  },
+  {
+    id: 'ball-fire',
+    category: 'balls',
+    name: 'Flame Ball',
+    cost: 275,
+    color: '#EF5350',
+    imageSource: GAME_ASSETS.ball.fire,
+  },
+  {
+    id: 'ball-gold',
+    category: 'balls',
+    name: 'Golden Legend',
+    cost: 500,
+    color: '#FFD54F',
+    imageSource: GAME_ASSETS.ball.gold,
+  },
+  {
+    id: 'ball-galaxy',
+    category: 'balls',
+    name: 'Galaxy Cosmic',
+    cost: 950,
+    color: '#7E57C2',
+    imageSource: GAME_ASSETS.ball.galaxy,
+  },
 
+  // —— Backboards: basic = template color swaps ——
   {
     id: 'backboard-standard',
     category: 'backboards',
-    name: 'Standard White',
+    name: 'Classic Orange',
     cost: 0,
-    color: '#FFFFFF',
+    color: '#FF9800',
     defaultUnlocked: true,
     backboardImage: GAME_ASSETS.hoop.backboardClassic,
-    rimNetImage: GAME_ASSETS.hoop.rimNetClassic,
+    rimNetImage: RIM_NET,
   },
-  { id: 'backboard-neon', category: 'backboards', name: 'Neon Green', cost: 75, color: '#69F0AE' },
-  { id: 'backboard-carbon', category: 'backboards', name: 'Carbon Gray', cost: 200, color: '#78909C' },
-  { id: 'backboard-purple', category: 'backboards', name: 'Purple Glass', cost: 350, color: '#AB47BC' },
+  {
+    id: 'backboard-crimson',
+    category: 'backboards',
+    name: 'Crimson',
+    cost: 45,
+    color: '#E53935',
+    rimNetImage: RIM_NET,
+  },
+  {
+    id: 'backboard-neon',
+    category: 'backboards',
+    name: 'Neon Green',
+    cost: 65,
+    color: '#69F0AE',
+    rimNetImage: RIM_NET,
+  },
+  {
+    id: 'backboard-ocean',
+    category: 'backboards',
+    name: 'Ocean Blue',
+    cost: 65,
+    color: '#29B6F6',
+    rimNetImage: RIM_NET,
+  },
+  {
+    id: 'backboard-carbon',
+    category: 'backboards',
+    name: 'Carbon Steel',
+    cost: 85,
+    color: '#78909C',
+    rimNetImage: RIM_NET,
+  },
+  {
+    id: 'backboard-purple',
+    category: 'backboards',
+    name: 'Purple Glass',
+    cost: 95,
+    color: '#AB47BC',
+    rimNetImage: RIM_NET,
+  },
 
+  // —— Backboards: premium = template + visual FX ——
+  {
+    id: 'backboard-stars',
+    category: 'backboards',
+    name: 'Starry Night',
+    cost: 320,
+    color: '#283593',
+    rimNetImage: RIM_NET,
+  },
+  {
+    id: 'backboard-blizzard',
+    category: 'backboards',
+    name: 'Blizzard Frost',
+    cost: 380,
+    color: '#B3E5FC',
+    rimNetImage: RIM_NET,
+  },
+  {
+    id: 'backboard-fire',
+    category: 'backboards',
+    name: 'Inferno',
+    cost: 420,
+    color: '#E65100',
+    rimNetImage: RIM_NET,
+  },
+  {
+    id: 'backboard-cracks',
+    category: 'backboards',
+    name: 'Shattered',
+    cost: 460,
+    color: '#424242',
+    rimNetImage: RIM_NET,
+  },
+  {
+    id: 'backboard-bones',
+    category: 'backboards',
+    name: 'Bone Yard',
+    cost: 520,
+    color: '#5D4037',
+    rimNetImage: RIM_NET,
+  },
+  {
+    id: 'backboard-clouds',
+    category: 'backboards',
+    name: 'Sky Clouds',
+    cost: 580,
+    color: '#4FC3F7',
+    rimNetImage: RIM_NET,
+  },
+
+  // —— Backgrounds ——
   {
     id: 'bg-court-green',
     category: 'backgrounds',
