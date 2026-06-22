@@ -27,6 +27,7 @@ export function useFriends() {
           furthestLevel: getFurthestLevel(p.campaignProgress),
           arcadeBest: p.arcadeBest,
           totalStars: getTotalStars(p.campaignProgress),
+          campaignProgress: p.campaignProgress,
         }))
       );
     } finally {

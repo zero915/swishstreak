@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { RouteProp, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FriendCard } from '../components/FriendCard';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
@@ -17,13 +18,38 @@ import { usePlayerData } from '../context/PlayerDataContext';
 import { useFriends } from '../hooks/useFriends';
 import { acceptInviteCode, shareInvite } from '../services/friendsService';
 import { getFurthestLevel, getTotalStars } from '../constants/campaignLevels';
+import { MainTabParamList } from '../types';
+
+type FriendsRoute = RouteProp<MainTabParamList, 'Friends'>;
 
 export function FriendsScreen() {
+  const route = useRoute<FriendsRoute>();
   const { isGuest, user, profile } = useAuth();
   const { data } = usePlayerData();
   const { friends, loading, refresh, inviteCode } = useFriends();
   const [codeInput, setCodeInput] = useState('');
   const [accepting, setAccepting] = useState(false);
+  const autoAcceptedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const code = route.params?.code?.trim().toUpperCase();
+    if (!code || !user || isGuest || autoAcceptedRef.current === code) return;
+    autoAcceptedRef.current = code;
+    setCodeInput(code);
+    (async () => {
+      setAccepting(true);
+      try {
+        const result = await acceptInviteCode(user.uid, code);
+        Alert.alert(result.success ? 'Friend Added' : 'Invite', result.message);
+        if (result.success) {
+          setCodeInput('');
+          refresh();
+        }
+      } finally {
+        setAccepting(false);
+      }
+    })();
+  }, [route.params?.code, user, isGuest, refresh]);
 
   if (isGuest) {
     return (
@@ -60,6 +86,8 @@ export function FriendsScreen() {
     stars: getTotalStars(data.campaignProgress),
     arcadeBest: data.arcadeBest.score,
   };
+
+  const sortedFriends = [...friends].sort((a, b) => b.arcadeBest.score - a.arcadeBest.score);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -98,10 +126,12 @@ export function FriendsScreen() {
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl }} />
       ) : (
         <ScrollView style={styles.list}>
-          {friends.length === 0 ? (
+          {sortedFriends.length === 0 ? (
             <Text style={styles.empty}>No friends yet. Share your invite code!</Text>
           ) : (
-            friends.map((friend) => <FriendCard key={friend.uid} friend={friend} />)
+            sortedFriends.map((friend) => (
+              <FriendCard key={friend.uid} friend={friend} myStats={myStats} />
+            ))
           )}
         </ScrollView>
       )}

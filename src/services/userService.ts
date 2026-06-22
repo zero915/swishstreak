@@ -1,19 +1,20 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  setDoc,
-  updateDoc,
-  where,
-} from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { DEFAULT_PLAYER_DATA } from '../constants/gameConfig';
-import { getFirestoreDb } from '../config/firebase';
-import { PlayerData, UserProfile } from '../types';
+import { getFirebaseAuth } from '../config/firebase';
+import { PlayerData, UserLocation, UserProfile } from '../types';
 import { mergePlayerData } from '../utils/mergeProgress';
 import { xpToLevel } from '../utils/xp';
+import * as api from './gameServerClient';
+
+/**
+ * Phase 1 of FIREBASE_MIGRATION.md: profiles now live in game-platform-server
+ * (Cloudflare D1) instead of Firestore. Firebase Auth is still the identity layer.
+ * Public function signatures are unchanged so the rest of the app is untouched.
+ */
+
+function signedIn(): boolean {
+  return !!getFirebaseAuth()?.currentUser || !!process.env.EXPO_PUBLIC_DEV_UID;
+}
 
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -25,11 +26,8 @@ function generateInviteCode(): string {
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  const db = getFirestoreDb();
-  if (!db) return null;
-  const snap = await getDoc(doc(db, 'users', uid));
-  if (!snap.exists()) return null;
-  return { uid, ...snap.data() } as UserProfile;
+  if (!signedIn()) return null;
+  return api.fetchProfile(uid);
 }
 
 export async function createOrUpdateUserProfile(
@@ -37,82 +35,79 @@ export async function createOrUpdateUserProfile(
   provider: 'google' | 'facebook',
   localData?: PlayerData
 ): Promise<UserProfile> {
-  const db = getFirestoreDb();
-  if (!db) throw new Error('Firebase is not configured');
+  if (!signedIn()) throw new Error('Not signed in');
 
-  const existing = await getUserProfile(user.uid);
+  const existing = await api.fetchMyProfile();
   if (existing) {
     if (localData) {
       const merged = mergePlayerData(localData, existing);
-      await updateDoc(doc(db, 'users', user.uid), {
+      const updated: UserProfile = {
+        ...existing,
         ...merged,
         displayName: user.displayName ?? existing.displayName,
         photoURL: user.photoURL ?? existing.photoURL,
         playerLevel: xpToLevel(merged.totalXP),
-      });
-      return { ...existing, ...merged };
+      };
+      await api.putMyProfile(updated);
+      return updated;
     }
     return existing;
   }
 
   const base = localData ? mergePlayerData(localData, DEFAULT_PLAYER_DATA) : DEFAULT_PLAYER_DATA;
-  const profile: Omit<UserProfile, 'uid'> = {
+  const facebookId =
+    provider === 'facebook'
+      ? user.providerData.find((p) => p.providerId === 'facebook.com')?.uid
+      : undefined;
+  const profile: UserProfile = {
+    uid: user.uid,
     displayName: user.displayName ?? 'Player',
     photoURL: user.photoURL ?? undefined,
     provider,
+    facebookId,
     inviteCode: generateInviteCode(),
     friendIds: [],
     ...base,
     playerLevel: xpToLevel(base.totalXP),
   };
 
-  await setDoc(doc(db, 'users', user.uid), profile);
-  return { uid: user.uid, ...profile };
+  await api.putMyProfile(profile);
+  return profile;
 }
 
 export async function saveUserProgress(uid: string, data: Partial<PlayerData>): Promise<void> {
-  const db = getFirestoreDb();
-  if (!db) return;
-  const payload = { ...data };
+  if (!signedIn()) return;
+  const payload: Record<string, unknown> = { ...data };
   if (data.totalXP !== undefined) {
     payload.playerLevel = xpToLevel(data.totalXP);
   }
-  await updateDoc(doc(db, 'users', uid), payload);
+  await api.patchMyProfile(payload);
+}
+
+export async function updateUserLocation(uid: string, location: UserLocation): Promise<void> {
+  if (!signedIn()) return;
+  await api.patchMyProfile({ location });
+}
+
+export async function updateUserActiveMatches(
+  uid: string,
+  fields: { activeVersusMatchId?: string | null; activeTournamentId?: string | null }
+): Promise<void> {
+  if (!signedIn()) return;
+  await api.patchMyProfile(fields);
 }
 
 export async function findUserByInviteCode(code: string): Promise<UserProfile | null> {
-  const db = getFirestoreDb();
-  if (!db) return null;
-  const q = query(collection(db, 'users'), where('inviteCode', '==', code.toUpperCase()));
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const docSnap = snap.docs[0];
-  return { uid: docSnap.id, ...docSnap.data() } as UserProfile;
+  if (!signedIn()) return null;
+  return api.fetchProfileByInvite(code.toUpperCase());
 }
 
 export async function addFriend(uid: string, friendUid: string): Promise<void> {
-  const db = getFirestoreDb();
-  if (!db) return;
-
-  const userRef = doc(db, 'users', uid);
-  const friendRef = doc(db, 'users', friendUid);
-  const [userSnap, friendSnap] = await Promise.all([getDoc(userRef), getDoc(friendRef)]);
-  if (!userSnap.exists() || !friendSnap.exists()) return;
-
-  const userFriends: string[] = userSnap.data().friendIds ?? [];
-  const friendFriends: string[] = friendSnap.data().friendIds ?? [];
-
-  if (!userFriends.includes(friendUid)) {
-    await updateDoc(userRef, { friendIds: [...userFriends, friendUid] });
-  }
-  if (!friendFriends.includes(uid)) {
-    await updateDoc(friendRef, { friendIds: [...friendFriends, uid] });
-  }
+  if (!signedIn()) return;
+  await api.addFriendRemote(friendUid);
 }
 
 export async function getFriendProfiles(friendIds: string[]): Promise<UserProfile[]> {
-  const db = getFirestoreDb();
-  if (!db || friendIds.length === 0) return [];
-  const profiles = await Promise.all(friendIds.map((id) => getUserProfile(id)));
-  return profiles.filter((p): p is UserProfile => p !== null);
+  if (!signedIn() || friendIds.length === 0) return [];
+  return api.fetchProfilesBatch(friendIds);
 }

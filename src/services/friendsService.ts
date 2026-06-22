@@ -7,6 +7,18 @@ export async function shareInvite(inviteCode: string, displayName: string): Prom
   });
 }
 
+export async function shareArcadeScore(
+  displayName: string,
+  score: number,
+  streak: number,
+  inviteCode?: string
+): Promise<void> {
+  const inviteLine = inviteCode ? `\nJoin me with code ${inviteCode} or swishstreak://invite/${inviteCode}` : '';
+  await Share.share({
+    message: `${displayName} scored ${score} on Swish Streak! Best streak: ${streak}. Can you beat it?${inviteLine}\nPlay: swishstreak://play`,
+  });
+}
+
 export async function acceptInviteCode(
   currentUid: string,
   code: string

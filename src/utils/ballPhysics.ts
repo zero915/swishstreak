@@ -11,9 +11,12 @@ import { resolveRimCollisions } from './rimCollision';
 import {
   applyScoreAssist,
   ballFitsRimOpening,
+  ballSignificantlySticksOut,
   getAssistStrength,
   getScoringCylinder,
+  isBallCenterInRimOpening,
   isInScoringCylinder,
+  isSwishLane,
   tryScoreOnDescent,
 } from './scoringCylinder';
 import { getBallPerspectiveScale } from './trajectory';
@@ -126,15 +129,23 @@ function stepOnce(
   if (phase === 'descending') {
     const cylinder = getScoringCylinder(geo);
     const centerDist = Math.abs(x - geo.rimCenterX);
-    const fitsOpening = ballFitsRimOpening(geo, x, radius, 2);
+    const strictFit = ballFitsRimOpening(geo, x, radius, 2);
+    const centerInOpening = isBallCenterInRimOpening(geo, x, 0.1);
     const inHoopZone =
       y >= geo.rimTop - radius * 1.5 && y <= geo.netBottom + radius * 0.6;
+    const rollingIn =
+      rimContactCount > 0 &&
+      centerInOpening &&
+      centerDist <= cylinder.innerRadius * 0.85 &&
+      vy > 0 &&
+      y >= geo.rimTop - radius * 0.35;
+    const swishLane = isSwishLane(geo, x, y, vy, radius, rimContactCount);
 
-    if (!scored && inHoopZone && fitsOpening) {
+    if (!scored && (swishLane || (inHoopZone && (strictFit || (rimContactCount > 0 && centerInOpening))))) {
       inScoreFunnel = true;
     }
 
-    if (!scored && rimContactCount > 0 && fitsOpening && vy > 0) {
+    if (!scored && rimContactCount > 0 && centerInOpening && vy > 0) {
       inScoreFunnel = true;
     }
 
@@ -143,14 +154,27 @@ function stepOnce(
       ? getAssistStrength(centerDist, cylinder.innerRadius, tuning.assistFactor ?? 1)
       : 0;
 
-    if (!scored && nearRim && fitsOpening && isInScoringCylinder(cylinder, x, y)) {
+    if (!scored && nearRim && strictFit && isInScoringCylinder(cylinder, x, y)) {
       inScoreFunnel = true;
       const assisted = applyScoreAssist(x, vx, geo.rimCenterX, assistStrength, dt);
       x = assisted.x;
       vx = assisted.vx;
     }
 
-    if (!scored && vy > 0 && fitsOpening && y >= geo.rimTop - radius * 0.6) {
+    if (!scored && nearRim && rimContactCount > 0 && centerInOpening) {
+      inScoreFunnel = true;
+      const rollStrength = Math.max(assistStrength, 0.3);
+      const assisted = applyScoreAssist(x, vx, geo.rimCenterX, rollStrength, dt);
+      x = assisted.x;
+      vx = assisted.vx;
+    }
+
+    if (
+      !scored &&
+      vy > 0 &&
+      y >= geo.rimTop - radius * 0.6 &&
+      (swishLane || strictFit || (rimContactCount > 0 && centerInOpening))
+    ) {
       if (tryScoreOnDescent(buildScoreInput())) {
         scored = true;
         events.push({ type: 'score', clean: rimContactCount === 0 });
@@ -179,7 +203,8 @@ function stepOnce(
       }
     }
 
-    if (!scored && (!inScoreFunnel || !fitsOpening)) {
+    const significantlyWide = ballSignificantlySticksOut(geo, x, radius, 0.1);
+    if (!scored && !rollingIn && !swishLane && (!inScoreFunnel || significantlyWide)) {
       const rimResult = resolveRimCollisions(
         x,
         y,
@@ -201,7 +226,7 @@ function stepOnce(
         rimContactCount = rimResult.rimContactCount;
         rimStuckSubsteps = rimResult.rimStuckSubsteps;
         events.push({ type: 'rim_bounce', zone: rimResult.zone });
-        if (ballFitsRimOpening(geo, x, radius, 2)) {
+        if (strictFit || isBallCenterInRimOpening(geo, x, 0.12)) {
           inScoreFunnel = true;
         }
       } else {

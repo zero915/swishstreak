@@ -20,6 +20,9 @@ import {
   PERFECT_WINDOW_INTERVAL_MIN_MS,
 } from '../constants/gameConfig';
 import { usePlayerData } from '../context/PlayerDataContext';
+import { useAuth } from '../context/AuthContext';
+import { shareArcadeScore } from '../services/friendsService';
+import { submitVersusRound } from '../services/versusService';
 import { useGameSession } from '../hooks/useGameSession';
 import { RootStackParamList } from '../types';
 import { getArcadeDifficulty, getCampaignDifficulty, getHoopDriftX, getHoopY } from '../utils/difficulty';
@@ -32,7 +35,8 @@ import { HoopStateRef } from '../utils/hoopSnapshot';
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
 
 export function GameScreen({ route, navigation }: Props) {
-  const { mode, campaignLevelId } = route.params;
+  const { mode, campaignLevelId, versusMatchId } = route.params;
+  const { isGuest, profile, refreshProfile } = useAuth();
   const { width, height } = useWindowDimensions();
   const { data, recordMake, recordArcadeRunEnd, recordCampaignLevelEnd, addCoins } = usePlayerData();
   const { state, reset, recordMake: sessionMake, recordMiss, getMultiplier, getRunSummary, getLevelResult } =
@@ -226,15 +230,39 @@ export function GameScreen({ route, navigation }: Props) {
 
   const handleRunHome = useCallback(async () => {
     const summary = getRunSummary();
-    await recordArcadeRunEnd(summary);
+    if (versusMatchId) {
+      try {
+        await submitVersusRound(versusMatchId, summary.score);
+        await refreshProfile();
+      } catch {
+        // Match may have ended
+      }
+    } else {
+      await recordArcadeRunEnd(summary);
+    }
     navigation.goBack();
-  }, [getRunSummary, recordArcadeRunEnd, navigation]);
+  }, [getRunSummary, recordArcadeRunEnd, navigation, versusMatchId, refreshProfile]);
 
   const handleSummaryClose = useCallback(async () => {
     const summary = getRunSummary();
-    await recordArcadeRunEnd(summary);
+    if (versusMatchId) {
+      try {
+        await submitVersusRound(versusMatchId, summary.score);
+        await refreshProfile();
+      } catch {
+        // ignore
+      }
+    } else {
+      await recordArcadeRunEnd(summary);
+    }
     setShowSummary(false);
-  }, [getRunSummary, recordArcadeRunEnd]);
+  }, [getRunSummary, recordArcadeRunEnd, versusMatchId, refreshProfile]);
+
+  const handleShareScore = useCallback(async () => {
+    const summary = getRunSummary();
+    if (!profile) return;
+    await shareArcadeScore(profile.displayName, summary.score, summary.bestStreak, profile.inviteCode);
+  }, [getRunSummary, profile]);
 
   const handleLevelContinue = useCallback(async () => {
     const result = levelResultRef.current;
@@ -338,6 +366,7 @@ export function GameScreen({ route, navigation }: Props) {
       <RunSummaryModal
         visible={showSummary}
         summary={getRunSummary()}
+        onShare={!isGuest && profile && !versusMatchId ? handleShareScore : undefined}
         onPlayAgain={() => {
           handleSummaryClose();
           handlePlayAgain();

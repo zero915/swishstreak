@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['activeVersusMatchId', 'activeTournamentId']);
+    }
+
+    match /leaderboards/{boardId}/entries/{entryId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == entryId;
+    }
+
+    match /versus_queue/{uid} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    match /versus_matches/{matchId} {
+      allow read: if request.auth != null
+        && (resource.data.playerA.uid == request.auth.uid || resource.data.playerB.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

@@ -51,11 +51,61 @@ export function ballFitsRimOpening(
   );
 }
 
+export function ballStickOutAmount(
+  geo: HoopGeometry,
+  x: number,
+  radius: number
+): { left: number; right: number } {
+  return {
+    left: Math.max(0, geo.rimInnerLeft - (x - radius)),
+    right: Math.max(0, x + radius - geo.rimInnerRight),
+  };
+}
+
+/** Wide enough that the ball cannot realistically drop through. */
+export function ballSignificantlySticksOut(
+  geo: HoopGeometry,
+  x: number,
+  radius: number,
+  marginFactor = 0.1
+): boolean {
+  const { left, right } = ballStickOutAmount(geo, x, radius);
+  const margin = radius * marginFactor;
+  return left > margin || right > margin;
+}
+
 /** Ball overlaps the opening horizontally but is too wide to pass through. */
 export function ballSticksOutOfRim(geo: HoopGeometry, x: number, radius: number): boolean {
   const overlapsOpening =
     x + radius > geo.rimInnerLeft && x - radius < geo.rimInnerRight;
   return overlapsOpening && !ballFitsRimOpening(geo, x, radius, 0);
+}
+
+/** Centered descent through the rim column — skip rim blocks and allow the make. */
+export function isSwishLane(
+  geo: HoopGeometry,
+  x: number,
+  y: number,
+  vy: number,
+  radius: number,
+  rimContactCount = 0
+): boolean {
+  if (vy <= 0) return false;
+
+  const innerHalf = (geo.rimInnerRight - geo.rimInnerLeft) / 2;
+  const centerDist = Math.abs(x - geo.rimCenterX);
+  const centered =
+    centerDist <= innerHalf * (rimContactCount > 0 ? 0.58 : 0.38);
+  const inRimColumn =
+    y >= geo.rimTop - radius * 0.9 && y <= geo.netBottom + radius * 0.45;
+
+  if (!centered || !inRimColumn) return false;
+
+  if (rimContactCount > 0) {
+    return ballFitsRimOpening(geo, x, radius, -radius * 0.14);
+  }
+
+  return ballFitsRimOpening(geo, x, radius, 2);
 }
 
 /** 0–1 strength for assist / near-miss magnetism. */
@@ -144,34 +194,45 @@ export function tryScoreOnDescent(input: TryScoreInput): boolean {
 
   const ballTop = y - radius;
   const prevBallTop = prevY - prevRadius;
+  const lip = geo.rimTop;
   const centerDist = Math.abs(x - geo.rimCenterX);
   const innerHalf = cylinder.innerRadius;
-  const centerInOpening = isBallCenterInRimOpening(geo, x, 0.02);
-  const fitsOpening = ballFitsRimOpening(geo, x, radius, 2);
+  const centerInOpening = isBallCenterInRimOpening(geo, x, 0.08);
+  const strictFit = ballFitsRimOpening(geo, x, radius, 2);
+  const swishLane = isSwishLane(geo, x, y, vy, radius, rimContactCount);
+  const rimRollIn =
+    rimContactCount > 0 &&
+    centerInOpening &&
+    centerDist <= innerHalf * 0.78 &&
+    y >= lip - radius * 0.45;
 
   const inCylinder = isInScoringCylinder(cylinder, x, y);
   const inMakeZone = inCylinder || inScoreFunnel || centerInOpening;
   if (!inMakeZone) return false;
 
-  const lip = geo.rimTop;
-  const lipTol = fitsOpening ? 14 : 8;
+  const lipTol = strictFit || rimRollIn || swishLane ? 14 : 8;
 
   const crossedLipDown =
     segmentCrosses(prevBallTop, ballTop, lip) ||
     (prevBallTop <= lip + lipTol && ballTop >= lip - lipTol) ||
-    (fitsOpening && y >= lip - radius * 0.15);
+    ((strictFit || rimRollIn || swishLane) && y >= lip - radius * 0.25);
 
   if (!crossedLipDown) return false;
 
-  // Ball must fit through the ring — center alone is not enough.
-  if (!fitsOpening) return false;
+  if (swishLane) return true;
 
-  if (touchedBackboard && (inScoreFunnel || centerInOpening)) return true;
-
-  // Rimmed makes: only after a bounce when the ball has rolled in and fits.
-  if (rimContactCount > 0) {
-    return inScoreFunnel || centerDist <= innerHalf * 0.55;
+  if (touchedBackboard && (inScoreFunnel || centerInOpening) && (strictFit || rimRollIn)) {
+    return true;
   }
+
+  // Rimmed roll-in: bounced in the ring and crept toward center — allow slight edge overlap.
+  if (rimRollIn && (inScoreFunnel || centerDist <= innerHalf * 0.72)) {
+    const rollFit = ballFitsRimOpening(geo, x, radius, -radius * 0.14);
+    return rollFit || centerDist <= innerHalf * 0.6;
+  }
+
+  // Clean swish — full ball width must clear the ring.
+  if (!strictFit) return false;
 
   if (!centerInOpening && !inScoreFunnel && peakY < geo.rimTop - radius * 2.2) {
     return false;

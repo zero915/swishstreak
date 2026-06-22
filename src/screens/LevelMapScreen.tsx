@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
@@ -17,6 +17,7 @@ import {
 } from '../constants/campaignLevels';
 import { colors, spacing, typography } from '../constants/theme';
 import { usePlayerData } from '../context/PlayerDataContext';
+import { useFriends } from '../hooks/useFriends';
 import { MainTabParamList, RootStackParamList } from '../types';
 
 type MapNavigation = CompositeNavigationProp<
@@ -34,9 +35,17 @@ const EXTEND_COUNT = 10;
 export function LevelMapScreen() {
   const navigation = useNavigation<MapNavigation>();
   const { data } = usePlayerData();
+  const { friends } = useFriends();
   const { width } = useWindowDimensions();
   const furthestUnlocked = getFurthestUnlockedLevel(data.campaignProgress);
   const [visibleEnd, setVisibleEnd] = useState(furthestUnlocked + VISIBLE_BUFFER);
+  const [showFriends, setShowFriends] = useState(false);
+
+  const friendsOnLevel = useCallback(
+    (levelId: number) =>
+      friends.filter((f) => (f.campaignProgress[levelId]?.stars ?? 0) > 0),
+    [friends]
+  );
 
   const rows = useMemo(() => {
     const end = Math.max(visibleEnd, furthestUnlocked + VISIBLE_BUFFER);
@@ -70,22 +79,36 @@ export function LevelMapScreen() {
       const unlocked = isLevelUnlocked(item.levelId, data.campaignProgress);
       const zone = getCampaignZone(item.levelId);
       const stars = progress?.stars ?? 0;
+      const levelFriends = showFriends ? friendsOnLevel(item.levelId) : [];
 
       return (
-        <LevelNode
-          levelId={item.levelId}
-          stars={stars}
-          unlocked={unlocked}
-          completed={stars > 0}
-          zoneColor={zone.color}
-          offsetX={getLevelNodeOffset(item.levelId)}
-          onPress={() =>
-            navigation.navigate('Game', { mode: 'campaign', campaignLevelId: item.levelId })
-          }
-        />
+        <View>
+          <LevelNode
+            levelId={item.levelId}
+            stars={stars}
+            unlocked={unlocked}
+            completed={stars > 0}
+            zoneColor={zone.color}
+            offsetX={getLevelNodeOffset(item.levelId)}
+            onPress={() =>
+              navigation.navigate('Game', { mode: 'campaign', campaignLevelId: item.levelId })
+            }
+          />
+          {levelFriends.length > 0 && (
+            <View style={[styles.friendRow, { marginLeft: getLevelNodeOffset(item.levelId) + spacing.lg }]}>
+              {levelFriends.slice(0, 4).map((f) => (
+                <View key={f.uid} style={styles.friendChip}>
+                  <Text style={styles.friendChipText}>
+                    {f.displayName.charAt(0)}·{f.campaignProgress[item.levelId]?.stars ?? 0}★
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
       );
     },
-    [data.campaignProgress, navigation]
+    [data.campaignProgress, navigation, showFriends, friendsOnLevel]
   );
 
   return (
@@ -97,7 +120,15 @@ export function LevelMapScreen() {
         end={{ x: 1, y: 1 }}
       />
       <Text style={styles.title}>Campaign</Text>
-      <Text style={styles.subtitle}>Endless path — beat levels to unlock the next</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.subtitle}>Endless path — beat levels to unlock the next</Text>
+        <Pressable
+          style={[styles.friendToggle, showFriends && styles.friendToggleOn]}
+          onPress={() => setShowFriends((v) => !v)}
+        >
+          <Text style={showFriends ? styles.friendToggleTextOn : styles.friendToggleText}>Friends</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.mapWrap}>
         <View style={[styles.pathLayer, { height: mapContentHeight, width }]}>
@@ -143,10 +174,51 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginTop: spacing.sm,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
   subtitle: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginBottom: spacing.md,
+    flex: 1,
+  },
+  friendToggle: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+  },
+  friendToggleOn: {
+    backgroundColor: colors.secondary,
+  },
+  friendToggleText: {
+    fontWeight: '700',
+    color: colors.text,
+  },
+  friendToggleTextOn: {
+    fontWeight: '700',
+    color: '#fff',
+  },
+  friendRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: -8,
+    marginBottom: spacing.sm,
+  },
+  friendChip: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  friendChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.secondary,
   },
   mapWrap: {
     flex: 1,

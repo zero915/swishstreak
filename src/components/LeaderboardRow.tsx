@@ -6,9 +6,10 @@ interface LeaderboardRowProps {
   entry: LeaderboardEntry;
   rank: number;
   isCurrentUser?: boolean;
+  scoreDelta?: number;
 }
 
-export function LeaderboardRow({ entry, rank, isCurrentUser }: LeaderboardRowProps) {
+export function LeaderboardRow({ entry, rank, isCurrentUser, scoreDelta }: LeaderboardRowProps) {
   return (
     <View style={[styles.row, isCurrentUser && styles.highlight]}>
       <Text style={styles.rank}>#{rank}</Text>
@@ -17,7 +18,10 @@ export function LeaderboardRow({ entry, rank, isCurrentUser }: LeaderboardRowPro
       </View>
       <View style={styles.info}>
         <Text style={styles.name}>{entry.displayName}</Text>
-        <Text style={styles.level}>Lv {entry.playerLevel}</Text>
+        <Text style={styles.level}>
+          Lv {entry.playerLevel}
+          {scoreDelta !== undefined ? ` · ${scoreDelta} behind #1` : ''}
+        </Text>
       </View>
       <Text style={styles.score}>
         {entry.totalStars !== undefined ? `${entry.totalStars}★` : entry.score}

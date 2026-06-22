@@ -7,9 +7,10 @@ interface RunSummaryModalProps {
   summary: RunSummary;
   onPlayAgain: () => void;
   onHome: () => void;
+  onShare?: () => void;
 }
 
-export function RunSummaryModal({ visible, summary, onPlayAgain, onHome }: RunSummaryModalProps) {
+export function RunSummaryModal({ visible, summary, onPlayAgain, onHome, onShare }: RunSummaryModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -19,6 +20,11 @@ export function RunSummaryModal({ visible, summary, onPlayAgain, onHome }: RunSu
           <Text style={styles.stat}>Best Streak: {summary.bestStreak}</Text>
           <Text style={styles.stat}>Coins Earned: {summary.coinsEarned}</Text>
           <Text style={styles.score}>Score: {summary.score}</Text>
+          {onShare && (
+            <Pressable style={[styles.button, styles.shareButton]} onPress={onShare}>
+              <Text style={styles.buttonText}>Share Score</Text>
+            </Pressable>
+          )}
           <Pressable style={styles.button} onPress={onPlayAgain}>
             <Text style={styles.buttonText}>Play Again</Text>
           </Pressable>
@@ -70,6 +76,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.sm,
+  },
+  shareButton: {
+    backgroundColor: colors.secondary,
   },
   buttonText: {
     color: '#fff',

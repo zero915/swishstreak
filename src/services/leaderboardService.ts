@@ -34,10 +34,22 @@ export async function submitArcadeScore(
     score,
     streak: bestStreak,
     updatedAt: new Date().toISOString(),
+    countryCode: profile.location?.countryCode ?? null,
+    region: profile.location?.region ?? null,
   };
 
   await setDoc(doc(db, 'leaderboards', 'arcade_alltime', 'entries', profile.uid), entry);
   await setDoc(doc(db, 'leaderboards', 'arcade_weekly', 'entries', profile.uid), entry);
+
+  if (profile.location?.countryCode) {
+    const countryBoard = `arcade_country_${profile.location.countryCode}`;
+    await setDoc(doc(db, 'leaderboards', countryBoard, 'entries', profile.uid), entry);
+    if (profile.location.region) {
+      const safeRegion = profile.location.region.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 32);
+      const regionBoard = `arcade_region_${profile.location.countryCode}_${safeRegion}`;
+      await setDoc(doc(db, 'leaderboards', regionBoard, 'entries', profile.uid), entry);
+    }
+  }
 }
 
 export async function submitCampaignScore(profile: UserProfile, campaignProgress: CampaignProgress): Promise<void> {
@@ -101,6 +113,29 @@ export async function fetchCampaignLeaderboard(friendIds?: string[]): Promise<Le
   if (friendIds && friendIds.length > 0) {
     const allowed = new Set(friendIds);
     entries = entries.filter((e) => allowed.has(e.uid));
+  }
+
+  return entries;
+}
+
+export async function fetchRegionalArcadeLeaderboard(
+  boardId: string,
+  weekly = false
+): Promise<LeaderboardEntry[]> {
+  const db = getFirestoreDb();
+  if (!db) return [];
+
+  const colRef = collection(db, 'leaderboards', boardId, 'entries');
+  const snap = await getDocs(query(colRef, orderBy('score', 'desc'), limit(50)));
+
+  let entries: LeaderboardEntry[] = snap.docs.map((d) => ({
+    uid: d.id,
+    ...d.data(),
+  })) as LeaderboardEntry[];
+
+  if (weekly) {
+    const cutoff = Date.now() - WEEK_MS;
+    entries = entries.filter((e) => e.updatedAt && new Date(e.updatedAt).getTime() >= cutoff);
   }
 
   return entries;

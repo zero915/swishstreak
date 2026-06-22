@@ -111,11 +111,59 @@ describe('shot physics', () => {
     assert.equal(made, true);
   });
 
+  it('registers rimmed roll-in when ball creeps toward center after rim bounce', () => {
+    const hoopY = 320;
+    const geo = getHoopGeometry(200, hoopY, 118);
+    const cylinder = getScoringCylinder(geo);
+
+    const made = tryScoreOnDescent({
+      geo,
+      cylinder,
+      ballRadius: 40,
+      x: geo.rimCenterX + 10,
+      y: geo.rimTop + 16,
+      vy: 45,
+      prevY: geo.rimTop + 8,
+      launchY: 700,
+      hoopY,
+      peakY: geo.rimTop - 35,
+      rimContactCount: 1,
+      touchedBackboard: false,
+      inScoreFunnel: true,
+    });
+
+    assert.equal(made, true);
+  });
+
+  it('registers centered swish lane on descent through the ring', () => {
+    const hoopY = 320;
+    const geo = getHoopGeometry(200, hoopY, 118);
+    const cylinder = getScoringCylinder(geo);
+
+    const made = tryScoreOnDescent({
+      geo,
+      cylinder,
+      ballRadius: 40,
+      x: geo.rimCenterX + 3,
+      y: geo.rimTop + 8,
+      vy: 110,
+      prevY: geo.rimTop - 4,
+      launchY: 700,
+      hoopY,
+      peakY: geo.rimTop - 45,
+      rimContactCount: 0,
+      touchedBackboard: false,
+      inScoreFunnel: false,
+    });
+
+    assert.equal(made, true);
+  });
+
   it('rejects make when ball width sticks out past the ring', () => {
     const hoopY = 320;
     const geo = getHoopGeometry(200, hoopY, 118);
     const cylinder = getScoringCylinder(geo);
-    const offsetX = geo.rimCenterX + 14;
+    const offsetX = geo.rimCenterX + 20;
 
     const made = tryScoreOnDescent({
       geo,

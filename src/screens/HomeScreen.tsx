@@ -4,7 +4,7 @@ import { CompositeNavigationProp, useNavigation } from '@react-navigation/native
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PlayerLevelBar } from '../components/PlayerLevelBar';
-import { DAILY_BONUS_COINS } from '../constants/gameConfig';
+import { DAILY_BONUS_COINS, TOURNAMENT_ENTRY_FEE } from '../constants/gameConfig';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { usePlayerData } from '../context/PlayerDataContext';
@@ -44,6 +44,22 @@ export function HomeScreen() {
         >
           <Text style={styles.playText}>🏀 Play Arcade</Text>
           <Text style={styles.playSubtext}>Endless run — 3 misses ends it</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.playButton, styles.versusButton]}
+          onPress={() => navigation.navigate('Versus')}
+        >
+          <Text style={styles.playText}>⚔️ 1v1 Online</Text>
+          <Text style={styles.playSubtext}>Bet 10–100 coins · Best of 3</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.playButton, styles.tournamentButton]}
+          onPress={() => navigation.navigate('Tournament')}
+        >
+          <Text style={styles.playText}>🏆 Tournament</Text>
+          <Text style={styles.playSubtext}>Join for {TOURNAMENT_ENTRY_FEE} coins · Winner takes pot</Text>
         </Pressable>
 
         <Pressable
@@ -126,6 +142,12 @@ const styles = StyleSheet.create({
   },
   campaignButton: {
     backgroundColor: colors.secondary,
+  },
+  versusButton: {
+    backgroundColor: '#5C6BC0',
+  },
+  tournamentButton: {
+    backgroundColor: '#8E24AA',
   },
   playText: {
     ...typography.heading,

@@ -5,7 +5,7 @@ import {
   RIM_STUCK_SPEED,
   RIM_STUCK_SUBSTEPS,
 } from '../constants/gameConfig';
-import { ballFitsRimOpening, ballSticksOutOfRim } from './scoringCylinder';
+import { ballFitsRimOpening, ballSticksOutOfRim, isSwishLane } from './scoringCylinder';
 import { HoopGeometry } from './hoopGeometry';
 
 export type RimZone = 'front' | 'back' | 'side';
@@ -103,7 +103,12 @@ export function resolveRimCollisions(
   const tubeR = geo.rimTubeRadius * 0.85;
 
   const fitsOpening = ballFitsRimOpening(geo, x, radius, 0);
-  const sticksOut = ballSticksOutOfRim(geo, x, radius);
+  const innerHalf = (geo.rimInnerRight - geo.rimInnerLeft) / 2;
+  const centered = Math.abs(x - geo.rimCenterX) <= innerHalf * 0.48;
+
+  if (isSwishLane(geo, x, y, vy, radius, rimContactCount)) {
+    return { x, y, vx, vy, rimContactCount, rimStuckSubsteps: 0, hit: false };
+  }
 
   const inOpeningVertical =
     y > geo.rimTop - radius * 0.5 &&
@@ -143,11 +148,12 @@ export function resolveRimCollisions(
       const tangentX = -result.ny;
       const tangentY = result.nx;
       const rollDir = Math.sign(tangentX * newRelVx + tangentY * newRelVy) || 1;
-      vx = hoopVx + tangentX * speed * 0.55 * rollDir + rollBiasX * 0.5;
-      vy = hoopVy + tangentY * speed * 0.3 * rollDir;
+      const towardCenter = (geo.rimCenterX - x) * 0.1;
+      vx = hoopVx + tangentX * speed * 0.55 * rollDir + rollBiasX * 0.5 + towardCenter;
+      vy = hoopVy + tangentY * speed * 0.3 * rollDir + Math.max(0, speed * 0.08);
     } else if (hitZone === 'front' && speed < RIM_ROLL_SPEED_THRESHOLD) {
-      vx = hoopVx + (geo.rimCenterX - x) * 0.08;
-      vy = Math.min(vy, hoopVy + speed * 0.2);
+      vx = hoopVx + (geo.rimCenterX - x) * 0.12;
+      vy = Math.min(vy, hoopVy + speed * 0.25);
     }
 
     rimStuckSubsteps = 0;
@@ -163,13 +169,13 @@ export function resolveRimCollisions(
 
   if (!descendingThroughOpening && !hit) {
     if (y + radius > geo.rimTop - 4 && y - radius < geo.rimTop + tubeR * 0.85) {
-      if (ballSticksOutOfRim(geo, x, radius)) {
+      if (ballSticksOutOfRim(geo, x, radius) && !centered) {
         tryHit(geo.rimCenterX, geo.rimTop, tubeR * 0.85, 'front');
       }
     }
 
     if (y - radius < geo.rimBottom + 4 && y + radius > geo.rimBottom - tubeR * 0.8) {
-      if (ballSticksOutOfRim(geo, x, radius)) {
+      if (ballSticksOutOfRim(geo, x, radius) && !centered) {
         tryHit(geo.rimCenterX, geo.rimBottom, tubeR * 0.8, 'back');
       }
     }

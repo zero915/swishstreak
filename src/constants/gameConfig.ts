@@ -47,6 +47,13 @@ export const DAILY_BONUS_COINS = 50;
 export const DAILY_BONUS_XP = 15;
 export const DAILY_BONUS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
+/** 1v1 bet options (coins). */
+export const VERSUS_BET_OPTIONS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const;
+export const TOURNAMENT_ENTRY_FEE = 10;
+export const TOURNAMENT_MIN_PLAYERS = 8;
+export const TOURNAMENT_MAX_PLAYERS = 16;
+export const MATCH_ROUND_DEADLINE_MS = 24 * 60 * 60 * 1000;
+
 export const XP_PER_MAKE = 5;
 export const XP_ARCADE_RUN_BASE = 20;
 export const XP_CAMPAIGN_LEVEL_BASE = 30;

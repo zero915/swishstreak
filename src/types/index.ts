@@ -64,13 +64,88 @@ export interface PlayerData {
   dailyBonusLastClaim?: string;
 }
 
+export interface UserLocation {
+  countryCode: string;
+  region?: string;
+  updatedAt: string;
+}
+
 export interface UserProfile extends PlayerData {
   uid: string;
   displayName: string;
   photoURL?: string;
   provider?: 'google' | 'facebook';
+  facebookId?: string;
   inviteCode: string;
   friendIds: string[];
+  location?: UserLocation;
+  activeVersusMatchId?: string;
+  activeTournamentId?: string;
+}
+
+export interface VersusRoundScore {
+  score: number;
+  submittedAt: string;
+}
+
+export interface VersusPlayerSlot {
+  uid: string;
+  displayName: string;
+  isBot: boolean;
+  rounds: VersusRoundScore[];
+}
+
+export type VersusMatchStatus = 'waiting' | 'active' | 'completed' | 'cancelled';
+
+export interface VersusMatch {
+  id: string;
+  betAmount: number;
+  status: VersusMatchStatus;
+  playerA: VersusPlayerSlot;
+  playerB: VersusPlayerSlot;
+  currentRound: number;
+  roundWins: { a: number; b: number };
+  roundDeadline: string;
+  winnerId?: string;
+  tournamentId?: string;
+  bracketRound?: number;
+  createdAt: string;
+}
+
+export type TournamentStatus = 'filling' | 'locked' | 'active' | 'completed';
+
+export interface TournamentBracketMatch {
+  matchId: string;
+  round: number;
+  slot: number;
+  playerAUid?: string;
+  playerBUid?: string;
+  winnerId?: string;
+}
+
+export interface Tournament {
+  id: string;
+  status: TournamentStatus;
+  entryFee: number;
+  minPlayers: number;
+  maxPlayers: number;
+  playerIds: string[];
+  pot: number;
+  bracket: TournamentBracketMatch[];
+  currentRound: number;
+  roundDeadline: string;
+  winnerId?: string;
+  createdAt: string;
+}
+
+export interface ActiveMatchDeadline {
+  kind: 'versus' | 'tournament';
+  matchId: string;
+  tournamentId?: string;
+  opponentName: string;
+  currentRound: number;
+  roundDeadline: string;
+  label: string;
 }
 
 export type GameMode = 'arcade' | 'campaign';
@@ -151,6 +226,7 @@ export interface FriendProfile {
   furthestLevel: number;
   arcadeBest: ArcadeBest;
   totalStars: number;
+  campaignProgress: CampaignProgress;
 }
 
 export interface SwipeVector {
@@ -179,13 +255,15 @@ export interface HoopBounds {
 export type RootStackParamList = {
   Login: undefined;
   MainTabs: undefined;
-  Game: { mode: GameMode; campaignLevelId?: number };
+  Game: { mode: GameMode; campaignLevelId?: number; versusMatchId?: string };
+  Versus: undefined;
+  Tournament: undefined;
 };
 
 export type MainTabParamList = {
   Home: undefined;
   Map: undefined;
   Leaderboard: undefined;
-  Friends: undefined;
+  Friends: { code?: string } | undefined;
   Shop: undefined;
 };

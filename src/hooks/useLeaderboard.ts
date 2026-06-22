@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { fetchArcadeLeaderboard, fetchCampaignLeaderboard } from '../services/leaderboardService';
+import {
+  fetchArcadeLeaderboard,
+  fetchCampaignLeaderboard,
+  fetchRegionalArcadeLeaderboard,
+} from '../services/leaderboardService';
+import { getRegionalBoardId } from '../services/geoService';
 import { LeaderboardEntry } from '../types';
 
 export function useLeaderboard() {
   const { profile, isGuest } = useAuth();
   const [arcadeAllTime, setArcadeAllTime] = useState<LeaderboardEntry[]>([]);
   const [arcadeWeekly, setArcadeWeekly] = useState<LeaderboardEntry[]>([]);
+  const [arcadeLocal, setArcadeLocal] = useState<LeaderboardEntry[]>([]);
   const [campaign, setCampaign] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -16,24 +22,27 @@ export function useLeaderboard() {
       setLoading(true);
       try {
         const friendIds = friendsOnly ? profile?.friendIds : undefined;
-        const [allTime, weekly, camp] = await Promise.all([
+        const regionalBoard = getRegionalBoardId(profile?.location, false);
+        const [allTime, weekly, camp, local] = await Promise.all([
           fetchArcadeLeaderboard(false, friendIds),
           fetchArcadeLeaderboard(true, friendIds),
           fetchCampaignLeaderboard(friendIds),
+          regionalBoard ? fetchRegionalArcadeLeaderboard(regionalBoard, false) : Promise.resolve([]),
         ]);
         setArcadeAllTime(allTime);
         setArcadeWeekly(weekly);
         setCampaign(camp);
+        setArcadeLocal(local);
       } finally {
         setLoading(false);
       }
     },
-    [isGuest, profile?.friendIds]
+    [isGuest, profile?.friendIds, profile?.location]
   );
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  return { arcadeAllTime, arcadeWeekly, campaign, loading, refresh };
+  return { arcadeAllTime, arcadeWeekly, arcadeLocal, campaign, loading, refresh };
 }
