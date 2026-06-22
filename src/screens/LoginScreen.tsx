@@ -6,9 +6,10 @@ import * as Facebook from 'expo-auth-session/providers/facebook';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
 import { FACEBOOK_APP_ID, GOOGLE_WEB_CLIENT_ID } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
+import { canUseFacebookAuth, canUseGoogleAuth } from '../services/authService';
 
 export function LoginScreen() {
-  const { signInGoogle, signInFacebook, continueAsGuest, isFirebaseReady, isLoading } = useAuth();
+  const { signInGoogle, signInFacebook, continueAsGuest, isFirebaseReady, isLoading, user } = useAuth();
   const [busy, setBusy] = useState(false);
 
   const [googleRequest, googleResponse, promptGoogle] = Google.useAuthRequest({
@@ -44,10 +45,11 @@ export function LoginScreen() {
     }
   }, [fbResponse, signInFacebook]);
 
-  if (isLoading) {
+  if (isLoading || user) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.signingIn}>Signing you in…</Text>
       </View>
     );
   }
@@ -60,21 +62,25 @@ export function LoginScreen() {
       <View style={styles.buttons}>
         {isFirebaseReady ? (
           <>
-            <Pressable
-              style={[styles.button, styles.googleButton]}
-              onPress={() => promptGoogle()}
-              disabled={!googleRequest || busy}
-            >
-              <Text style={styles.buttonText}>Continue with Google</Text>
-            </Pressable>
+            {canUseGoogleAuth() && (
+              <Pressable
+                style={[styles.button, styles.googleButton]}
+                onPress={() => promptGoogle()}
+                disabled={!googleRequest || busy}
+              >
+                <Text style={styles.buttonText}>Continue with Google</Text>
+              </Pressable>
+            )}
 
-            <Pressable
-              style={[styles.button, styles.facebookButton]}
-              onPress={() => promptFacebook()}
-              disabled={!fbRequest || busy}
-            >
-              <Text style={styles.buttonText}>Continue with Facebook</Text>
-            </Pressable>
+            {canUseFacebookAuth() && (
+              <Pressable
+                style={[styles.button, styles.facebookButton]}
+                onPress={() => promptFacebook()}
+                disabled={!fbRequest || busy}
+              >
+                <Text style={styles.buttonText}>Continue with Facebook</Text>
+              </Pressable>
+            )}
           </>
         ) : (
           <Text style={styles.configNote}>
@@ -101,6 +107,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.md,
+  },
+  signingIn: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
   title: {
     ...typography.title,

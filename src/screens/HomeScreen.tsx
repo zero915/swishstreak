@@ -51,7 +51,7 @@ export function HomeScreen() {
           onPress={() => navigation.navigate('Map')}
         >
           <Text style={styles.playText}>🗺️ Campaign Map</Text>
-          <Text style={styles.playSubtext}>30 levels with stars to earn</Text>
+          <Text style={styles.playSubtext}>Endless campaign — stars to earn</Text>
         </Pressable>
 
         <Pressable

@@ -92,6 +92,10 @@ export interface DifficultyParams {
   wind: number;
   drift: boolean;
   perfectWindow: boolean;
+  /** 0 = forgiving rim, 1 = harsh rim (restitution lerp). */
+  rimDifficulty?: number;
+  /** Multiplier on scoring-cylinder assist (default 1). */
+  assistFactor?: number;
 }
 
 export interface GameSessionState {

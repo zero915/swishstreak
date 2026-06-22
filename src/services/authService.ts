@@ -46,6 +46,14 @@ export async function signOut(): Promise<void> {
   if (auth) await firebaseSignOut(auth);
 }
 
+export function canUseGoogleAuth(): boolean {
+  return isFirebaseConfigured && !!GOOGLE_WEB_CLIENT_ID;
+}
+
+export function canUseFacebookAuth(): boolean {
+  return isFirebaseConfigured && !!FACEBOOK_APP_ID;
+}
+
 export function canUseSocialAuth(): boolean {
-  return isFirebaseConfigured;
+  return canUseGoogleAuth() || canUseFacebookAuth();
 }

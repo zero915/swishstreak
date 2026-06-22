@@ -37,7 +37,8 @@ function MainTabs() {
 }
 
 function RootNavigator() {
-  const { hasSeenLogin, isLoading } = useAuth();
+  const { hasSeenLogin, isLoading, user, isGuest } = useAuth();
+  const showLogin = !isLoading && !user && !isGuest && !hasSeenLogin;
 
   if (isLoading) {
     return (
@@ -49,9 +50,7 @@ function RootNavigator() {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!hasSeenLogin ? (
-        <Stack.Screen name="Login" component={LoginScreen} />
-      ) : null}
+      {showLogin ? <Stack.Screen name="Login" component={LoginScreen} /> : null}
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen
         name="Game"

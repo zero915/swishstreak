@@ -61,7 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userProfile = await createOrUpdateUserProfile(firebaseUser, provider, localData);
           setProfile(userProfile);
           setGuestFlag(false);
-          await setIsGuest(false);
+          await Promise.all([setIsGuest(false), setHasSeenLogin()]);
+          setHasSeenLoginFlag(true);
         } else if (guest) {
           setProfile(null);
         }

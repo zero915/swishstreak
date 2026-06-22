@@ -17,9 +17,6 @@ import { BackboardFace } from './BackboardFace';
 import { getContainerTop, getHoopMetrics } from '../utils/hoopGeometry';
 import { getHoopSpriteLayout, getRimNetClipHeights, RIM_NET_LIP_RATIO } from '../utils/hoopSpriteLayout';
 
-/** Procedural layout only — bracket + rim row gap before rim lip. */
-const RIM_ROW_TOP_OFFSET = 18;
-
 interface HoopProps {
   x: number;
   y: number;
@@ -28,7 +25,7 @@ interface HoopProps {
   showPerfectWindow?: boolean;
   celebrating?: boolean;
   rimPulse?: boolean;
-  /** Rendered between the rim (back) and net (front) — e.g. the ball on swish. */
+  /** Rendered between backboard and rim/net — e.g. the ball. */
   children?: ReactNode;
 }
 
@@ -147,11 +144,12 @@ export function Hoop({
   const sprite = getHoopSpriteLayout(rimWidth);
   const containerTop = getContainerTop(rimCenterY, rimWidth);
   const containerWidth = useSprites ? sprite.containerWidth : m.boardWidth;
-  const rimNetTop = useSprites ? sprite.rimNetTop : m.boardHeight + RIM_ROW_TOP_OFFSET;
+  const rimLipOffsetY = m.rimCenterOffsetY - m.rimHeight / 2;
+  const rimNetTop = useSprites ? sprite.rimNetTop : rimLipOffsetY;
   const rimNetHeight = useSprites ? sprite.rimNetHeight : m.rimHeight + m.netHeight + 6;
   const rimNetWidth = useSprites ? sprite.rimNetWidth : rimWidth;
   const rimClip = useSprites ? getRimNetClipHeights(rimWidth) : null;
-  const proceduralNetTop = containerTop + rimNetTop + m.rimHeight + 3;
+  const proceduralNetTop = containerTop + rimLipOffsetY + m.rimHeight + 3;
 
   const celebrateScale = useSharedValue(1);
   const rimFlash = useSharedValue(0);
@@ -197,7 +195,11 @@ export function Hoop({
     opacity: rimFlash.value * 0.8,
   }));
 
-  const backLayerStyle = useAnimatedStyle(() => ({
+  const boardLayerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: celebrateScale.value }],
+  }));
+
+  const rimLayerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: celebrateScale.value }],
   }));
 
@@ -205,16 +207,22 @@ export function Hoop({
     transform: [{ scale: celebrateScale.value }],
   }));
 
-  const containerPos = {
+  const boardContainerPos = {
     top: containerTop,
     left: x - containerWidth / 2,
     width: containerWidth,
   };
 
+  const rimContainerPos = {
+    top: containerTop + rimNetTop,
+    left: x - rimNetWidth / 2,
+    width: rimNetWidth,
+  };
+
   return (
     <>
       <Animated.View
-        style={[styles.container, styles.hoopBackLayer, containerPos, backLayerStyle]}
+        style={[styles.container, styles.hoopBoardLayer, boardContainerPos, boardLayerStyle]}
         pointerEvents="none"
       >
         <Animated.View
@@ -253,18 +261,19 @@ export function Hoop({
             }}
           />
         ) : (
-          <>
-            <ProceduralBackboard boardWidth={m.boardWidth} boardHeight={m.boardHeight} />
-            <View style={[styles.bracket, { width: m.boardWidth * 0.22 }]} />
-          </>
+          <ProceduralBackboard boardWidth={m.boardWidth} boardHeight={m.boardHeight} />
         )}
+      </Animated.View>
 
+      <Animated.View
+        style={[styles.container, styles.hoopRimLayer, rimContainerPos, rimLayerStyle]}
+        pointerEvents="none"
+      >
         {useSprites && rimClip ? (
           <View
             style={[
               styles.rimNetSpriteWrap,
               {
-                top: rimNetTop,
                 width: rimNetWidth,
                 height: rimClip.rimBackClipH,
                 overflow: 'hidden',
@@ -298,14 +307,12 @@ export function Hoop({
             )}
           </View>
         ) : (
-          <View style={[styles.proceduralRimWrap, { top: rimNetTop }]}>
-            <ProceduralRimOnly
-              rimWidth={rimWidth}
-              rimHeight={m.rimHeight}
-              showPerfectWindow={showPerfectWindow}
-              rimGlowStyle={rimGlowStyle}
-            />
-          </View>
+          <ProceduralRimOnly
+            rimWidth={rimWidth}
+            rimHeight={m.rimHeight}
+            showPerfectWindow={showPerfectWindow}
+            rimGlowStyle={rimGlowStyle}
+          />
         )}
       </Animated.View>
 
@@ -358,9 +365,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
   },
-  hoopBackLayer: {
-    zIndex: 7,
-    elevation: 7,
+  hoopBoardLayer: {
+    zIndex: 4,
+    elevation: 4,
+  },
+  hoopRimLayer: {
+    zIndex: 6,
+    elevation: 6,
   },
   hoopNetLayer: {
     zIndex: 12,
@@ -401,32 +412,12 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  bracket: {
-    height: 10,
-    backgroundColor: '#78909C',
-    borderRadius: 2,
-    marginTop: 4,
-    marginBottom: 2,
-  },
   rimNetSpriteWrap: {
-    position: 'absolute',
-    alignSelf: 'center',
     alignItems: 'center',
-  },
-  proceduralRimWrap: {
-    position: 'absolute',
-    alignSelf: 'center',
-    width: '100%',
-    alignItems: 'center',
-  },
-  rimNetImage: {
-    width: '100%',
-    height: '100%',
   },
   rimRow: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
   rimGlow: {
     position: 'absolute',

@@ -25,6 +25,9 @@ import { RootStackParamList } from '../types';
 import { getArcadeDifficulty, getCampaignDifficulty, getHoopDriftX, getHoopY } from '../utils/difficulty';
 import { getGameSizing } from '../utils/gameSizing';
 import { getHoopGeometry } from '../utils/hoopGeometry';
+import { getHoopOffsetX } from '../utils/hoopMovement';
+import { getPhysicsRimCenterY } from '../utils/hoopSpriteLayout';
+import { HoopStateRef } from '../utils/hoopSnapshot';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
 
@@ -38,7 +41,7 @@ export function GameScreen({ route, navigation }: Props) {
   const [layout, setLayout] = useState({ width, height });
   const [showSummary, setShowSummary] = useState(false);
   const [showLevelResult, setShowLevelResult] = useState(false);
-  const [hoopDriftX, setHoopDriftX] = useState(0);
+  const [hoopTick, setHoopTick] = useState(0);
   const [perfectWindowActive, setPerfectWindowActive] = useState(false);
   const [celebration, setCelebration] = useState<{
     x: number;
@@ -50,6 +53,7 @@ export function GameScreen({ route, navigation }: Props) {
   const pendingMakeRef = useRef<{ points: number; streakAfterMake: number } | null>(null);
   const startTimeRef = useRef(Date.now());
   const levelResultRef = useRef(getLevelResult());
+  const hoopStateRef = useRef<HoopStateRef>({ x: width / 2, vx: 0 });
 
   const campaignDef = campaignLevelId ? getCampaignLevel(campaignLevelId) : undefined;
 
@@ -68,10 +72,33 @@ export function GameScreen({ route, navigation }: Props) {
     [layout.width, difficulty.rimScale]
   );
   const { rimWidth, ballRadius, touchTargetSize } = sizing;
-  const hoopX = layout.width / 2 + (difficulty.drift ? hoopDriftX : 0);
+
+  const elapsedMs = Date.now() - startTimeRef.current;
+  const hoopOffsetX =
+    mode === 'arcade'
+      ? getHoopOffsetX(state.shotsMade, elapsedMs)
+      : difficulty.drift
+        ? getHoopDriftX(elapsedMs)
+        : 0;
+  const hoopX = layout.width / 2 + hoopOffsetX;
+  void hoopTick;
+
+  const getHoopXRef = useRef(() => hoopX);
+  getHoopXRef.current = () => {
+    const elapsed = Date.now() - startTimeRef.current;
+    const offset =
+      mode === 'arcade'
+        ? getHoopOffsetX(state.shotsMade, elapsed)
+        : difficulty.drift
+          ? getHoopDriftX(elapsed)
+          : 0;
+    return layout.width / 2 + offset;
+  };
+
+  hoopStateRef.current = { x: hoopX, vx: hoopStateRef.current.vx };
 
   const hoopLayout = useMemo(
-    () => getHoopGeometry(hoopX, hoopY, rimWidth),
+    () => getHoopGeometry(hoopX, getPhysicsRimCenterY(hoopY), rimWidth),
     [hoopX, hoopY, rimWidth]
   );
 
@@ -92,12 +119,12 @@ export function GameScreen({ route, navigation }: Props) {
   );
 
   useEffect(() => {
-    if (!difficulty.drift) return;
+    if (mode !== 'arcade' && !(mode === 'campaign' && difficulty.drift)) return;
     const interval = setInterval(() => {
-      setHoopDriftX(getHoopDriftX(Date.now() - startTimeRef.current));
+      setHoopTick((t) => t + 1);
     }, 16);
     return () => clearInterval(interval);
-  }, [difficulty.drift]);
+  }, [mode, difficulty.drift, state.shotsMade]);
 
   useEffect(() => {
     if (!difficulty.perfectWindow) return;
@@ -267,10 +294,14 @@ export function GameScreen({ route, navigation }: Props) {
           launchY={launchY}
           hoopX={hoopX}
           hoopY={hoopY}
+          getHoopX={() => getHoopXRef.current()}
+          hoopStateRef={hoopStateRef}
           rimWidth={rimWidth}
           ballRadius={ballRadius}
           touchTargetSize={touchTargetSize}
           wind={difficulty.wind}
+          rimDifficulty={difficulty.rimDifficulty}
+          assistFactor={difficulty.assistFactor}
           ballId={data.shopState.equipped.ball}
           disabled={runBlocked}
           screenWidth={layout.width}

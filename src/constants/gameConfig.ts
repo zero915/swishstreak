@@ -10,10 +10,19 @@ export const MAX_FLIGHT_TIME = 6;
 export const PHYSICS_SUBSTEP = 1 / 120;
 export const MAX_PHYSICS_SUBSTEPS = 16;
 export const RIM_BOUNCE_RESTITUTION = 0.62;
-export const BACKBOARD_BOUNCE_RESTITUTION = 0.58;
-export const BOUNCE_FRICTION = 0.14;
-export const MIN_BOUNCE_SPEED = 90;
-export const RIM_COLLISION_SCALE = 0.55;
+export const RIM_RESTITUTION_MAX = 0.9;
+export const RIM_RESTITUTION_MIN = 0.75;
+export const BACKBOARD_RESTITUTION = 0.85;
+export const SCORE_CYLINDER_RADIUS_FACTOR = 1.28;
+export const SCORE_CYLINDER_TOP_MARGIN = 12;
+export const SCORE_CYLINDER_BOTTOM_MARGIN = 16;
+export const ASSIST_GAIN = 16;
+export const ASSIST_MAX_CORRECTION_PER_FRAME = 10;
+export const NEAR_MISS_RADIUS_FACTOR = 0.08;
+export const RIM_ROLL_SPEED_THRESHOLD = 220;
+export const RIM_STUCK_SUBSTEPS = 8;
+export const RIM_STUCK_SPEED = 40;
+export const SCORED_NET_DRAG = 80;
 export const SCORE_NET_FALL_MS = 700;
 export const SCORE_NET_DIP_MS = 130;
 export const SCORE_EXIT_MS = 560;
@@ -47,6 +56,31 @@ export const BASE_HOOP_Y_OFFSET = 0.48;
 /** Legacy fallback — prefer getGameSizing(). */
 export const BASE_RIM_WIDTH = 118;
 export const RIM_SCREEN_RATIO = 0.30;
+/** Inner target square on backboard face (matches BackboardFace.tsx). */
+export const INNER_TARGET_HEIGHT_FRACTION = 0.36;
+export const INNER_TARGET_BOTTOM_FRACTION = 0.5 + INNER_TARGET_HEIGHT_FRACTION / 2;
+
+/** Arcade shot-based hoop movement */
+export const HOOP_HOLD_OFFSET = 55;
+export const HOOP_OSCILLATE_AMPLITUDE = 50;
+export const HOOP_OSCILLATE_BASE_MS = 4000;
+export const HOOP_OSCILLATE_SPEED_STEP_MS = 600;
+export const HOOP_RANDOM_MOVE_MS = 1400;
+export const HOOP_RANDOM_PAUSE_MS_MIN = 600;
+export const HOOP_RANDOM_PAUSE_MS_MAX = 1400;
+export const HOOP_RANDOM_AMPLITUDE = 60;
+
+export const HOOP_MOVE_THRESHOLDS = {
+  holdLeft: 3,
+  holdRight: 6,
+  oscillate: 9,
+  speedTier1: 12,
+  speedTier2: 18,
+  speedTier3: 24,
+  random: 30,
+} as const;
+
+/** Campaign level drift (sine) */
 export const HOOP_DRIFT_AMPLITUDE = 40;
 export const HOOP_DRIFT_PERIOD_MS = 3000;
 export const PERFECT_WINDOW_DURATION_MS = 800;

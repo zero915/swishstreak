@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
 import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -24,7 +24,7 @@ import {
   isBallOffScreen,
   stepBallPhysics,
 } from '../utils/ballPhysics';
-import { getHoopGeometry } from '../utils/hoopGeometry';
+import { readHoopSnapshot, HoopStateRef } from '../utils/hoopSnapshot';
 import { getPhysicsRimCenterY } from '../utils/hoopSpriteLayout';
 import {
   computePovShotVelocity,
@@ -39,10 +39,14 @@ interface BallProps {
   launchY: number;
   hoopX: number;
   hoopY: number;
+  getHoopX?: () => number;
+  hoopStateRef?: RefObject<HoopStateRef>;
   rimWidth: number;
   ballRadius: number;
   touchTargetSize: number;
   wind: number;
+  rimDifficulty?: number;
+  assistFactor?: number;
   ballId: string;
   disabled: boolean;
   screenWidth: number;
@@ -91,10 +95,14 @@ export function Ball({
   launchY,
   hoopX,
   hoopY,
+  getHoopX,
+  hoopStateRef,
   rimWidth,
   ballRadius,
   touchTargetSize,
   wind,
+  rimDifficulty,
+  assistFactor,
   ballId,
   disabled,
   screenWidth,
@@ -115,15 +123,20 @@ export function Ball({
   const ballSquash = useSharedValue(1);
   const trailOpacity = useSharedValue(0);
   const behindNet = useSharedValue(0);
+  const ballOnTop = useSharedValue(1);
 
   const propsRef = useRef({
     launchX,
     launchY,
     hoopX,
     hoopY,
+    getHoopX,
+    hoopStateRef,
     rimWidth,
     ballRadius,
     wind,
+    rimDifficulty,
+    assistFactor,
     screenWidth,
     screenHeight,
   });
@@ -132,9 +145,13 @@ export function Ball({
     launchY,
     hoopX,
     hoopY,
+    getHoopX,
+    hoopStateRef,
     rimWidth,
     ballRadius,
     wind,
+    rimDifficulty,
+    assistFactor,
     screenWidth,
     screenHeight,
   };
@@ -147,7 +164,8 @@ export function Ball({
   const missOffScreenAtRef = useRef<number | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rimHitCooldownRef = useRef(0);
-  const rimHitsThisShotRef = useRef(0);
+  const prevHoopXRef = useRef(hoopX);
+  const smoothHoopVxRef = useRef(0);
 
   const clearExitTimer = useCallback(() => {
     if (exitTimerRef.current !== null) {
@@ -187,7 +205,8 @@ export function Ball({
     ballSquash.value = 1;
     trailOpacity.value = 0;
     behindNet.value = 0;
-  }, [ballX, ballY, ballRotation, ballScale, ballSquash, trailOpacity, behindNet, launchX, launchY]);
+    ballOnTop.value = 1;
+  }, [ballX, ballY, ballRotation, ballScale, ballSquash, trailOpacity, behindNet, ballOnTop, launchX, launchY]);
 
   const runScoreExit = useCallback(
     (hx: number, netBottom: number, fromX: number, fromY: number) => {
@@ -196,6 +215,7 @@ export function Ball({
       physicsRef.current = null;
       scoreTimeRef.current = null;
       behindNet.value = 1;
+      ballOnTop.value = 0;
 
       ballX.value = fromX;
       ballY.value = fromY;
@@ -221,6 +241,7 @@ export function Ball({
         if (phaseRef.current === 'scoreExit') {
           phaseRef.current = 'idle';
           behindNet.value = 0;
+          ballOnTop.value = 1;
           resetBallVisual();
         }
       }, SCORE_EXIT_MS);
@@ -279,9 +300,11 @@ export function Ball({
         clearExitTimer();
         trailOpacity.value = 0;
         behindNet.value = 0;
+        ballOnTop.value = 1;
       }
 
       behindNet.value = 0;
+      ballOnTop.value = 1;
 
       const { launchX: x0, launchY: y0, hoopX: hx, hoopY: hy } = propsRef.current;
       const physicsHoopY = getPhysicsRimCenterY(hy);
@@ -303,7 +326,7 @@ export function Ball({
       scoreTimeRef.current = null;
       missOffScreenAtRef.current = null;
       rimHitCooldownRef.current = 0;
-      rimHitsThisShotRef.current = 0;
+      prevHoopXRef.current = propsRef.current.hoopStateRef?.current?.x ?? propsRef.current.hoopX;
 
       ballX.value = x0;
       ballY.value = y0;
@@ -323,22 +346,35 @@ export function Ball({
         flightTimeRef.current += frameDt;
 
         const physicsHoopY = getPhysicsRimCenterY(propsRef.current.hoopY);
-        const geo = getHoopGeometry(
-          propsRef.current.hoopX,
+        const liveHoopX = propsRef.current.getHoopX?.() ?? propsRef.current.hoopX;
+        const snapshot = readHoopSnapshot(
+          liveHoopX,
           physicsHoopY,
-          propsRef.current.rimWidth
+          propsRef.current.rimWidth,
+          prevHoopXRef.current,
+          frameDt,
+          smoothHoopVxRef
         );
+        prevHoopXRef.current = liveHoopX;
 
         const { state, events } = stepBallPhysics(
           physicsRef.current,
           frameDt,
-          geo,
+          snapshot,
           propsRef.current.ballRadius,
           propsRef.current.launchY,
           physicsHoopY,
-          propsRef.current.wind
+          {
+            wind: propsRef.current.wind,
+            rimDifficulty: propsRef.current.rimDifficulty,
+            assistFactor: propsRef.current.assistFactor,
+          },
+          physicsHoopY,
+          propsRef.current.rimWidth
         );
         physicsRef.current = state;
+
+        const geo = snapshot.geo;
 
         ballX.value = state.x;
         ballY.value = state.y;
@@ -347,18 +383,19 @@ export function Ball({
 
         if (state.scored && state.y > geo.rimTop - propsRef.current.ballRadius * 0.15) {
           behindNet.value = 1;
+          ballOnTop.value = 0;
         } else if (!state.scored) {
           behindNet.value = 0;
+          ballOnTop.value = state.phase === 'ascending' ? 1 : 0;
         }
 
         for (const event of events) {
           if (event.type === 'score') {
             onCelebrate(geo.rimCenterX, geo.backboardTop + 28, {
-              clean: rimHitsThisShotRef.current === 0,
+              clean: event.clean,
             });
             scoreTimeRef.current = now;
           } else if (event.type === 'rim_bounce') {
-            rimHitsThisShotRef.current += 1;
             if (now - rimHitCooldownRef.current > 120) {
               rimHitCooldownRef.current = now;
               triggerSquash();
@@ -440,10 +477,15 @@ export function Ball({
 
   const size = ballRadius * 2;
 
-  const ballLayerStyle = useAnimatedStyle(() => ({
-    zIndex: behindNet.value > 0.5 ? 8 : 13,
-    elevation: behindNet.value > 0.5 ? 8 : 13,
-  }), []);
+  const ballLayerStyle = useAnimatedStyle(() => {
+    if (behindNet.value > 0.5) {
+      return { zIndex: 9, elevation: 9 };
+    }
+    if (ballOnTop.value > 0.5) {
+      return { zIndex: 14, elevation: 14 };
+    }
+    return { zIndex: 8, elevation: 8 };
+  }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

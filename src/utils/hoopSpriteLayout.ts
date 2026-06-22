@@ -6,8 +6,8 @@ const BACKBOARD_ASPECT = 571 / 776;
 /** Fraction from top of rim_net_classic.png to the rim lip ellipse. */
 export const RIM_NET_LIP_RATIO = 0.14;
 
-/** Extra visual drop so rim sprite sits on the backboard tab. Physics uses the same offset. */
-export const RIM_VISUAL_DROP = 22;
+/** Extra visual drop so sprite rim lip aligns with physics rim lip. */
+export const RIM_VISUAL_DROP = 10;
 
 /** Screen Y of the rim center used for ball physics / trajectory (matches sprite lip). */
 export function getPhysicsRimCenterY(rimCenterY: number): number {

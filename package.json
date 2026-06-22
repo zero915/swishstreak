@@ -34,7 +34,8 @@
     "start:debug": "expo start",
     "android": "EXPO_UNSTABLE_HEADLESS=1 expo start --android",
     "ios": "EXPO_UNSTABLE_HEADLESS=1 expo start --ios",
-    "web": "EXPO_UNSTABLE_HEADLESS=1 expo start --web"
+    "web": "EXPO_UNSTABLE_HEADLESS=1 expo start --web",
+    "test": "npx tsx --test src/utils/shotPhysics.test.ts"
   },
   "private": true
 }

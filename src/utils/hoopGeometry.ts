@@ -1,5 +1,5 @@
 /** Shared hoop layout — must match Hoop.tsx exactly. */
-import { RIM_INNER_FRACTION } from '../constants/gameConfig';
+import { INNER_TARGET_BOTTOM_FRACTION, RIM_INNER_FRACTION } from '../constants/gameConfig';
 
 export interface HoopMetrics {
   boardWidth: number;
@@ -37,8 +37,8 @@ export function getHoopMetrics(rimWidth: number): HoopMetrics {
   const rimHeight = Math.max(22, rimWidth * 0.15);
   const rimBorder = Math.max(4, rimWidth * 0.03);
   const netHeight = Math.max(48, rimWidth * 0.38);
-  // Must match Hoop.tsx: board → bracket (4+10+2) → rim row (2) → rim center.
-  const rimCenterOffsetY = boardHeight + 18 + rimHeight / 2;
+  // Rim lip aligns with bottom of inner target square on backboard face.
+  const rimCenterOffsetY = boardHeight * INNER_TARGET_BOTTOM_FRACTION + rimHeight / 2;
 
   return {
     boardWidth,
