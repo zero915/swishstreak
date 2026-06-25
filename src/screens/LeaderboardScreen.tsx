@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LeaderboardRow } from '../components/LeaderboardRow';
+import { SignInPrompt } from '../components/SignInPrompt';
 import { colors, spacing, typography } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useLeaderboard } from '../hooks/useLeaderboard';
@@ -37,7 +38,7 @@ export function LeaderboardScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.title}>Leaderboards</Text>
-        <Text style={styles.prompt}>Sign in to compare scores with friends and players worldwide.</Text>
+        <SignInPrompt message="compare scores with friends and players worldwide." />
       </SafeAreaView>
     );
   }

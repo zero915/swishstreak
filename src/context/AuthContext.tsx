@@ -1,6 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { canUseSocialAuth, signInWithFacebook, signInWithGoogle, signOut as authSignOut } from '../services/authService';
+import {
+  canUseSocialAuth,
+  linkFacebook,
+  linkGoogle,
+  signInAsGuest,
+  signInWithFacebook,
+  signInWithGoogle,
+  signOut as authSignOut,
+} from '../services/authService';
 import { createOrUpdateUserProfile } from '../services/userService';
 import { getFirebaseAuth, isFirebaseConfigured } from '../config/firebase';
 import { UserProfile } from '../types';
@@ -10,11 +18,14 @@ interface AuthContextValue {
   user: User | null;
   profile: UserProfile | null;
   isGuest: boolean;
+  isAnonymous: boolean;
   isLoading: boolean;
   hasSeenLogin: boolean;
   isFirebaseReady: boolean;
   signInGoogle: (idToken: string) => Promise<void>;
   signInFacebook: (accessToken: string) => Promise<void>;
+  linkGoogleAccount: (idToken: string) => Promise<void>;
+  linkFacebookAccount: (accessToken: string) => Promise<void>;
   continueAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
   setProfile: (profile: UserProfile | null) => void;
@@ -53,20 +64,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       unsub = onAuthStateChanged(auth, async (firebaseUser) => {
         setUser(firebaseUser);
-        if (firebaseUser) {
-          const localData = await loadGuestProgress();
-          const provider = firebaseUser.providerData[0]?.providerId.includes('facebook')
-            ? 'facebook'
-            : 'google';
-          const userProfile = await createOrUpdateUserProfile(firebaseUser, provider, localData);
-          setProfile(userProfile);
-          setGuestFlag(false);
-          await Promise.all([setIsGuest(false), setHasSeenLogin()]);
-          setHasSeenLoginFlag(true);
-        } else if (guest) {
-          setProfile(null);
+        try {
+          if (firebaseUser) {
+            const localData = await loadGuestProgress();
+            const provider = firebaseUser.providerData[0]?.providerId.includes('facebook')
+              ? 'facebook'
+              : 'google';
+            const userProfile = await createOrUpdateUserProfile(firebaseUser, provider, localData);
+            setProfile(userProfile);
+            setGuestFlag(false);
+            await Promise.all([setIsGuest(false), setHasSeenLogin()]);
+            setHasSeenLoginFlag(true);
+          } else if (guest) {
+            setProfile(null);
+          }
+        } catch (e) {
+          console.error('Failed to sync profile after sign-in:', e);
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       });
     })();
 
@@ -95,7 +111,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setHasSeenLoginFlag(true);
   }, []);
 
+  const linkGoogleAccount = useCallback(async (idToken: string) => {
+    const linked = await linkGoogle(idToken);
+    setUser(linked);
+    await refreshProfile();
+  }, [refreshProfile]);
+
+  const linkFacebookAccount = useCallback(async (accessToken: string) => {
+    const linked = await linkFacebook(accessToken);
+    setUser(linked);
+    await refreshProfile();
+  }, [refreshProfile]);
+
   const continueAsGuest = useCallback(async () => {
+    // Prefer a real (anonymous) Firebase account so guests get a verifiable token
+    // and can play versus/tournaments. onAuthStateChanged sets user/profile/flags.
+    // Throws if Anonymous sign-in is disabled in Firebase — callers surface that.
+    if (isFirebaseConfigured) {
+      await signInAsGuest();
+      return;
+    }
     setGuestFlag(true);
     setUser(null);
     setProfile(null);
@@ -116,11 +151,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       profile,
       isGuest,
+      isAnonymous: !!user?.isAnonymous,
       isLoading,
       hasSeenLogin,
       isFirebaseReady: isFirebaseConfigured && canUseSocialAuth(),
       signInGoogle,
       signInFacebook,
+      linkGoogleAccount,
+      linkFacebookAccount,
       continueAsGuest,
       signOut,
       setProfile,
@@ -134,6 +172,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hasSeenLogin,
       signInGoogle,
       signInFacebook,
+      linkGoogleAccount,
+      linkFacebookAccount,
       continueAsGuest,
       signOut,
       refreshProfile,

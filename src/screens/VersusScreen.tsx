@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SignInPrompt } from '../components/SignInPrompt';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
 import { VERSUS_BET_OPTIONS } from '../constants/gameConfig';
 import { useAuth } from '../context/AuthContext';
@@ -89,7 +90,7 @@ export function VersusScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.title}>1v1 Versus</Text>
-        <Text style={styles.prompt}>Sign in to bet coins and play friends or rivals online.</Text>
+        <SignInPrompt message="bet coins and play friends or rivals online." />
       </SafeAreaView>
     );
   }

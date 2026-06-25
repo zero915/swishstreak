@@ -18,10 +18,10 @@ anything until its replacement is verified locally.
 | User profile, XP/levels, friends (invite code), location, campaign progress | `userService.ts` (Firestore `users/`) | New D1 tables + API routes |
 | Leaderboards: arcade all-time/weekly/country/region + campaign | `leaderboardService.ts` (Firestore `leaderboards/`) | D1 `scores`/`player_game_stats` + new routes |
 | Coins (global wallet) | Firestore `users.totalCoins` | ✅ `totalCoins` in the profile JSON on Cloudflare (Phase 1) |
-| Versus (PvP) matchmaking + rounds | `functions/` callables + `versusService` | D1 + routes + **Cron Trigger** (polling, not realtime) |
-| Tournaments (brackets, bots, pot) | `functions/` callables + `tournamentService` | D1 + routes + Cron Trigger |
-| Scheduled forfeit of stale rounds | `functions/` `onSchedule` | Cloudflare **Cron Trigger** |
-| Realtime updates | Firestore `onSnapshot` | **Polling** (Workers can't push) |
+| Versus (PvP) matchmaking + rounds | `functions/` callables + `versusService` | ✅ D1 + `/api/versus/*` + Cron (polling, not realtime) — Phase 3 |
+| Tournaments (brackets, bots, pot) | `functions/` callables + `tournamentService` | ✅ D1 + `/api/tournaments/*` + Cron — Phase 4 |
+| Scheduled forfeit of stale rounds | `functions/` `onSchedule` | ✅ Cloudflare Cron Trigger (`runVersusCron`) — Phase 3 |
+| Realtime updates | Firestore `onSnapshot` | ✅ Polling (versus/tournament/deadline banner) |
 
 ## Phases (do in order)
 
@@ -64,30 +64,87 @@ What was built:
 Note: leaderboards + versus + tournaments still use Firebase until Phases 2–4 — that's
 expected; the app keeps working in this hybrid state.
 
-### Phase 2 — Leaderboards on Cloudflare
-- Map arcade/campaign + regional/weekly onto `scores` + `player_game_stats` (the generic
-  leaderboard routes already exist: `/leaderboard/{global,weekly,regional,friends}`).
-- Port `calculateArcadeScore`/star logic into the swish-streak engine's scoring so
-  `/game/submit` accepts arcade runs. (Also resolve the screen-size normalization gap noted
-  in the server README so shots validate.)
-- Rewire `leaderboardService.ts`.
-- **You verify:** a run submits, appears on global/weekly/regional boards.
+### Phase 2 — Leaderboards on Cloudflare  ✅ DONE (verify locally)
+Used a dedicated named-leaderboard table rather than the generic `/game/submit` replay path —
+that keeps Phase 2 a pure storage swap (same client-computed-score trust model as the old
+Firestore boards). Hardening scores through the anti-cheat replay is a later, separate step.
 
-### Phase 3 — Versus (PvP) on Cloudflare
-- New D1 tables: `versus_queue`, `versus_matches` (JSON columns mirroring the current docs).
-- New routes under `/api/versus/*`: join/leave queue, submit round, get match.
-- Replace `setTimeout` bot pairing + the scheduled forfeit with a **Cron Trigger**
-  (`wrangler.toml [triggers] crons = ["*/5 * * * *"]` + a `scheduled()` handler that pairs
-  waiting players with bots after a delay and forfeits expired rounds).
-- Rewire `versusService.ts`; replace `onSnapshot` with polling (e.g. refetch match every 3s
-  while a round is open).
-- **You verify:** queue → match (vs bot), best-of-3 resolves, pot pays out.
+What was built:
+- `migrations/0006_app_leaderboard.sql` — `app_leaderboard` (one best row per
+  game_id/uid/board; `country_code`+`region` columns serve global/weekly/regional from one table).
+- `src/platform/leaderboards.ts` — `/api/boards/:gameId`: `POST /submit`, `GET /?board=&scope=&country=&region=&limit=`.
+- `gameServerClient.ts` — `submitBoardEntry` + `fetchBoard`.
+- `leaderboardService.ts` — rewired off Firestore. `submitArcadeScore`, `submitCampaignScore`,
+  `fetchArcadeLeaderboard`, `fetchCampaignLeaderboard`, `updateLeaderboardsAfterRun` keep their
+  signatures. `fetchRegionalArcadeLeaderboard` changed `(boardId, weekly)` →
+  `(countryCode, region?, weekly?)` (its only caller, `useLeaderboard`, updated). This also
+  **fixes a latent bug**: the old regional board-id strings written vs. read never matched.
 
-### Phase 4 — Tournaments on Cloudflare
-- New D1 table `tournaments`; routes `/api/tournaments/*` (join, get, open).
-- Bracket advance + lock-after-timeout handled by the same Cron handler.
-- Rewire `tournamentService.ts` (polling instead of `onSnapshot`).
-- **You verify:** join → bracket fills with bots → advances → winner gets pot.
+**You verify (locally):**
+1. `npm run db:migrate:local` (applies 0006), `npm run dev`, `npm run typecheck`.
+2. Submit + read with the dev bypass:
+   ```bash
+   curl -X POST localhost:8787/api/boards/swish-streak/submit \
+     -H "Authorization: Bearer dev:alice" -H "Content-Type: application/json" \
+     -d '{"board":"arcade","score":1200,"displayName":"Alice","playerLevel":3,"streak":7,"countryCode":"US","region":"California"}'
+   curl "localhost:8787/api/boards/swish-streak?board=arcade&scope=global" -H "Authorization: Bearer dev:alice"
+   curl "localhost:8787/api/boards/swish-streak?board=arcade&scope=regional&country=US&region=California" -H "Authorization: Bearer dev:alice"
+   ```
+3. In the app: play an arcade run + a campaign level → entries appear on the Leaderboard
+   screen (all-time / weekly / local / campaign tabs), friends filter works.
+
+### Phase 3 — Versus (PvP) on Cloudflare  ✅ DONE (verify locally)
+What was built:
+- `migrations/0007_versus.sql` — `versus_queue` + `versus_matches` (JSON player slots).
+- `src/platform/versus.ts` — `/api/versus/:gameId`: `POST /queue/join`, `POST /queue/leave`,
+  `POST /round/submit`, `GET /match/:id`, `GET /me/active`. Ported the round-resolution +
+  bot logic; coins use the profile wallet (`app_profiles.totalCoins`).
+- **Cron Trigger** (`wrangler.toml [triggers] crons = ["*/2 * * * *"]` + `scheduled` in
+  `index.ts` → `runVersusCron`): pairs queue entries waiting >30s with a bot, and forfeits
+  rounds past their deadline. Replaces the old `setTimeout` + `onSchedule`.
+- `SwishStreak/src/services/versusService.ts` — rewired off Firebase; `onSnapshot` replaced
+  by 3s polling in `subscribeVersusMatch`. Signatures unchanged, so the versus screens are
+  untouched.
+
+Notes: betting debits/credits `totalCoins` in the profile JSON. Tournaments still use Firebase
+(Phase 4). Bot opponents respond the moment you submit your round (no separate bot timer).
+
+**You verify (locally):** redeploy + remote-migrate, then in the app: join versus with a bet →
+matched (vs a bot within ~2 min via cron, or instantly vs another `dev` user in queue) →
+best-of-3 resolves → winner's coins go up. Or curl `/api/versus/swish-streak/queue/join` etc.
+with `Bearer dev:alice`.
+
+### Phase 4 — Tournaments on Cloudflare  ✅ DONE (verify locally)
+What was built:
+- `migrations/0008_tournaments.sql` — `tournaments` table (bracket as JSON; bracket matches
+  reuse `versus_matches` with `tournament_id` set).
+- Tournament logic added to `src/platform/versus.ts`: `joinTournament`, `lockTournament`,
+  `advanceTournamentMatch`, plus `tournamentsRouter` at `/api/tournaments/:gameId`
+  (`POST /join`, `GET /open`, `GET /me/active`, `GET /:id`).
+- Match completion now calls `advanceTournamentMatch`; the **Cron** locks filling brackets
+  past a 2-min window and auto-resolves bot-vs-bot bracket matches so the bracket progresses.
+- `tournamentService.ts` rewired off Firebase (polling). `ActiveMatchContext` also rewired —
+  the deadline banner now polls the new endpoints instead of Firestore `onSnapshot`.
+
+**The app no longer reads Firestore at runtime** — only Firebase Auth remains.
+
+### Phase 5 — Delete Firebase backend  ✅ CODE DONE (run the file deletions)
+Code changes applied:
+- ✅ Removed `getFirestoreDb` + the Firestore import from `src/config/firebase.ts` (Auth kept).
+- ✅ Dropped `firebase-tools` (devDep) and the dead `firebase:*` / `functions:build` scripts
+  from `package.json`. `firebase` (Auth) kept.
+- ✅ Verified: no remaining `getFirestoreDb` / `firebase/firestore` references; `functionsClient.ts`
+  is orphaned (nothing imports it).
+
+Last step — delete the now-unused files (needs your shell; mine can't reach the WSL mount):
+```bash
+cd ~/android/SwishStreak
+rm -rf functions firebase.json firestore.rules .firebaserc src/services/functionsClient.ts
+npm install        # refresh node_modules / lockfile without firebase-tools
+npx tsc --noEmit   # confirm no dangling imports
+```
+After that, Firebase is **Auth-only** — no Firestore, no Cloud Functions, no Blaze billing.
+Migration complete: SwishStreak runs entirely on the free Cloudflare backend + Firebase Auth.
 
 ### Phase 5 — Delete Firebase backend
 Only after Phases 1–4 are verified:

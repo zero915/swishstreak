@@ -5,7 +5,6 @@ import {
   fetchCampaignLeaderboard,
   fetchRegionalArcadeLeaderboard,
 } from '../services/leaderboardService';
-import { getRegionalBoardId } from '../services/geoService';
 import { LeaderboardEntry } from '../types';
 
 export function useLeaderboard() {
@@ -22,12 +21,14 @@ export function useLeaderboard() {
       setLoading(true);
       try {
         const friendIds = friendsOnly ? profile?.friendIds : undefined;
-        const regionalBoard = getRegionalBoardId(profile?.location, false);
+        const loc = profile?.location;
         const [allTime, weekly, camp, local] = await Promise.all([
           fetchArcadeLeaderboard(false, friendIds),
           fetchArcadeLeaderboard(true, friendIds),
           fetchCampaignLeaderboard(friendIds),
-          regionalBoard ? fetchRegionalArcadeLeaderboard(regionalBoard, false) : Promise.resolve([]),
+          loc?.countryCode
+            ? fetchRegionalArcadeLeaderboard(loc.countryCode, loc.region, false)
+            : Promise.resolve<LeaderboardEntry[]>([]),
         ]);
         setArcadeAllTime(allTime);
         setArcadeWeekly(weekly);

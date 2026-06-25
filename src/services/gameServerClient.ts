@@ -11,10 +11,13 @@
  * run the server with AUTH_DEV_BYPASS=true — the client then sends `Bearer dev:<uid>`.
  */
 import { getFirebaseAuth } from '../config/firebase';
-import type { UserProfile } from '../types';
+import type { LeaderboardEntry, Tournament, UserProfile, VersusMatch } from '../types';
 
 const GAME_ID = 'swish-streak';
 const PROFILE_BASE = `/api/profiles/${GAME_ID}`;
+const BOARDS_BASE = `/api/boards/${GAME_ID}`;
+const VERSUS_BASE = `/api/versus/${GAME_ID}`;
+const TOURNAMENT_BASE = `/api/tournaments/${GAME_ID}`;
 
 export function getApiBaseUrl(): string {
   return process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8787';
@@ -110,4 +113,73 @@ export async function fetchProfilesBatch(uids: string[]): Promise<UserProfile[]>
 }
 export async function addFriendRemote(friendUid: string): Promise<{ ok: boolean; friendIds: string[] }> {
   return request<{ ok: boolean; friendIds: string[] }>(`${PROFILE_BASE}/friends`, { method: 'POST', body: JSON.stringify({ friendUid }) });
+}
+
+// ── Leaderboards (Phase 2: replaces Firestore `leaderboards/`) ──
+export interface BoardEntryInput {
+  board: string;
+  score: number;
+  displayName?: string;
+  photoURL?: string;
+  playerLevel?: number;
+  streak?: number;
+  totalStars?: number;
+  furthestLevel?: number;
+  countryCode?: string;
+  region?: string;
+}
+export function submitBoardEntry(entry: BoardEntryInput): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${BOARDS_BASE}/submit`, { method: 'POST', body: JSON.stringify(entry) });
+}
+export async function fetchBoard(params: {
+  board: string;
+  scope?: 'global' | 'weekly' | 'regional';
+  country?: string;
+  region?: string;
+  limit?: number;
+}): Promise<LeaderboardEntry[]> {
+  const q = new URLSearchParams();
+  q.set('board', params.board);
+  if (params.scope) q.set('scope', params.scope);
+  if (params.country) q.set('country', params.country);
+  if (params.region) q.set('region', params.region);
+  if (params.limit) q.set('limit', String(params.limit));
+  const r = await request<{ leaderboard: LeaderboardEntry[] }>(`${BOARDS_BASE}?${q.toString()}`);
+  return r.leaderboard;
+}
+
+// ── Versus / PvP (Phase 3: replaces Firebase Functions + Firestore) ──
+export function versusJoin(betAmount: number): Promise<{ matchId?: string; queued: boolean }> {
+  return request<{ matchId?: string; queued: boolean }>(`${VERSUS_BASE}/queue/join`, { method: 'POST', body: JSON.stringify({ betAmount }) });
+}
+export function versusLeave(): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${VERSUS_BASE}/queue/leave`, { method: 'POST', body: '{}' });
+}
+export function versusSubmitRound(matchId: string, score: number): Promise<{ completed: boolean }> {
+  return request<{ completed: boolean }>(`${VERSUS_BASE}/round/submit`, { method: 'POST', body: JSON.stringify({ matchId, score }) });
+}
+export async function versusGetMatch(matchId: string): Promise<VersusMatch | null> {
+  const r = await request<{ match: VersusMatch | null }>(`${VERSUS_BASE}/match/${encodeURIComponent(matchId)}`);
+  return r.match;
+}
+export async function versusActiveMatchId(): Promise<string | null> {
+  const r = await request<{ matchId: string | null }>(`${VERSUS_BASE}/me/active`);
+  return r.matchId;
+}
+
+// ── Tournaments (Phase 4) ──
+export function tournamentJoin(): Promise<{ tournamentId: string }> {
+  return request<{ tournamentId: string }>(`${TOURNAMENT_BASE}/join`, { method: 'POST', body: '{}' });
+}
+export async function tournamentGet(id: string): Promise<Tournament | null> {
+  const r = await request<{ tournament: Tournament | null }>(`${TOURNAMENT_BASE}/${encodeURIComponent(id)}`);
+  return r.tournament;
+}
+export async function tournamentOpen(): Promise<Tournament | null> {
+  const r = await request<{ tournament: Tournament | null }>(`${TOURNAMENT_BASE}/open`);
+  return r.tournament;
+}
+export async function tournamentActiveId(): Promise<string | null> {
+  const r = await request<{ tournamentId: string | null }>(`${TOURNAMENT_BASE}/me/active`);
+  return r.tournamentId;
 }

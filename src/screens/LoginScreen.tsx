@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Google from 'expo-auth-session/providers/google';
 import * as Facebook from 'expo-auth-session/providers/facebook';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
-import { FACEBOOK_APP_ID, GOOGLE_WEB_CLIENT_ID } from '../config/firebase';
+import { FACEBOOK_APP_ID, GOOGLE_WEB_CLIENT_ID, isFirebaseConfigured } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { canUseFacebookAuth, canUseGoogleAuth } from '../services/authService';
 
@@ -60,7 +60,7 @@ export function LoginScreen() {
       <Text style={styles.subtitle}>Swipe. Shoot. Streak.</Text>
 
       <View style={styles.buttons}>
-        {isFirebaseReady ? (
+        {isFirebaseReady && (
           <>
             {canUseGoogleAuth() && (
               <Pressable
@@ -82,14 +82,32 @@ export function LoginScreen() {
               </Pressable>
             )}
           </>
-        ) : (
+        )}
+        {!isFirebaseConfigured && (
           <Text style={styles.configNote}>
-            Firebase not configured. Add keys to .env to enable social login. See docs/FIREBASE_SETUP.md
+            Firebase not configured. Add keys to .env to enable login.
           </Text>
         )}
 
-        <Pressable style={styles.guestLink} onPress={continueAsGuest} disabled={busy}>
-          <Text style={styles.guestText}>Continue as Guest</Text>
+        <Pressable
+          style={styles.guestLink}
+          disabled={busy}
+          onPress={async () => {
+            setBusy(true);
+            try {
+              await continueAsGuest();
+            } catch (e) {
+              Alert.alert(
+                'Guest play unavailable',
+                'Enable Anonymous sign-in in Firebase Console → Authentication → Sign-in method, then try again.\n\n' +
+                  (e instanceof Error ? e.message : String(e))
+              );
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <Text style={styles.guestText}>Play as Guest</Text>
         </Pressable>
       </View>
     </SafeAreaView>

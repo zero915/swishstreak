@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, getAuth, initializeAuth } from 'firebase/auth';
-import { Firestore, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -21,7 +20,6 @@ export const isFirebaseConfigured = !!(
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
-let db: Firestore | null = null;
 
 export function getFirebaseApp(): FirebaseApp | null {
   if (!isFirebaseConfigured) return null;
@@ -52,16 +50,6 @@ export function getFirebaseAuth(): Auth | null {
     auth = createAuth(firebaseApp);
   }
   return auth;
-}
-
-export function getFirestoreDb(): Firestore | null {
-  if (!isFirebaseConfigured) return null;
-  if (!db) {
-    const firebaseApp = getFirebaseApp();
-    if (!firebaseApp) return null;
-    db = getFirestore(firebaseApp);
-  }
-  return db;
 }
 
 export const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';

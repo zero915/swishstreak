@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BracketView } from '../components/BracketView';
+import { SignInPrompt } from '../components/SignInPrompt';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
 import { TOURNAMENT_ENTRY_FEE, TOURNAMENT_MAX_PLAYERS, TOURNAMENT_MIN_PLAYERS } from '../constants/gameConfig';
 import { useAuth } from '../context/AuthContext';
@@ -59,7 +60,7 @@ export function TournamentScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.title}>Tournament</Text>
-        <Text style={styles.prompt}>Sign in to join playoff brackets.</Text>
+        <SignInPrompt message="join playoff brackets." />
       </SafeAreaView>
     );
   }

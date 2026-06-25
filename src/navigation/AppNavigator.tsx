@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { MainTabParamList, RootStackParamList } from '../types';
@@ -32,11 +33,31 @@ function MainTabs() {
           tabBarStyle: { minHeight: 56 },
         }}
       >
-        <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
-        <Tab.Screen name="Map" component={LevelMapScreen} options={{ title: 'Map' }} />
-        <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: 'Ranks' }} />
-        <Tab.Screen name="Friends" component={FriendsScreen} options={{ title: 'Friends' }} />
-        <Tab.Screen name="Shop" component={ShopScreen} options={{ title: 'Shop' }} />
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: 'Home', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} /> }}
+        />
+        <Tab.Screen
+          name="Map"
+          component={LevelMapScreen}
+          options={{ title: 'Map', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'map' : 'map-outline'} size={size} color={color} /> }}
+        />
+        <Tab.Screen
+          name="Leaderboard"
+          component={LeaderboardScreen}
+          options={{ title: 'Ranks', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'trophy' : 'trophy-outline'} size={size} color={color} /> }}
+        />
+        <Tab.Screen
+          name="Friends"
+          component={FriendsScreen}
+          options={{ title: 'Friends', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} /> }}
+        />
+        <Tab.Screen
+          name="Shop"
+          component={ShopScreen}
+          options={{ title: 'Shop', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'bag' : 'bag-outline'} size={size} color={color} /> }}
+        />
       </Tab.Navigator>
     </View>
   );

@@ -12,6 +12,7 @@ import {
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FriendCard } from '../components/FriendCard';
+import { SignInPrompt } from '../components/SignInPrompt';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { usePlayerData } from '../context/PlayerDataContext';
@@ -55,7 +56,7 @@ export function FriendsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.title}>Friends</Text>
-        <Text style={styles.prompt}>Sign in to invite friends and compare stats.</Text>
+        <SignInPrompt message="invite friends and compare stats." />
       </SafeAreaView>
     );
   }

@@ -1,19 +1,14 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  setDoc,
-  where,
-} from 'firebase/firestore';
 import { getTotalStars, getFurthestLevel } from '../constants/campaignLevels';
-import { getFirestoreDb } from '../config/firebase';
 import { CampaignProgress, LeaderboardEntry, PlayerData, UserProfile } from '../types';
 import { calculateArcadeScore } from '../utils/trajectory';
+import * as api from './gameServerClient';
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+/**
+ * Phase 2 of FIREBASE_MIGRATION.md: leaderboards now live in game-platform-server
+ * (Cloudflare D1) instead of Firestore. Scores are still client-computed and
+ * submitted (same trust model as before). Friend-only views filter the top results
+ * client-side, exactly as the Firestore version did.
+ */
 
 export async function submitArcadeScore(
   profile: UserProfile,
@@ -21,124 +16,70 @@ export async function submitArcadeScore(
   bestStreak: number,
   coinsEarned: number
 ): Promise<void> {
-  const db = getFirestoreDb();
-  if (!db) return;
-
   const score = calculateArcadeScore(shotsMade, bestStreak, coinsEarned);
   if (score <= profile.arcadeBest.score) return;
 
-  const entry = {
-    displayName: profile.displayName,
-    photoURL: profile.photoURL ?? null,
-    playerLevel: profile.playerLevel,
+  await api.submitBoardEntry({
+    board: 'arcade',
     score,
+    displayName: profile.displayName,
+    photoURL: profile.photoURL,
+    playerLevel: profile.playerLevel,
     streak: bestStreak,
-    updatedAt: new Date().toISOString(),
-    countryCode: profile.location?.countryCode ?? null,
-    region: profile.location?.region ?? null,
-  };
-
-  await setDoc(doc(db, 'leaderboards', 'arcade_alltime', 'entries', profile.uid), entry);
-  await setDoc(doc(db, 'leaderboards', 'arcade_weekly', 'entries', profile.uid), entry);
-
-  if (profile.location?.countryCode) {
-    const countryBoard = `arcade_country_${profile.location.countryCode}`;
-    await setDoc(doc(db, 'leaderboards', countryBoard, 'entries', profile.uid), entry);
-    if (profile.location.region) {
-      const safeRegion = profile.location.region.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 32);
-      const regionBoard = `arcade_region_${profile.location.countryCode}_${safeRegion}`;
-      await setDoc(doc(db, 'leaderboards', regionBoard, 'entries', profile.uid), entry);
-    }
-  }
+    countryCode: profile.location?.countryCode,
+    region: profile.location?.region,
+  });
 }
 
-export async function submitCampaignScore(profile: UserProfile, campaignProgress: CampaignProgress): Promise<void> {
-  const db = getFirestoreDb();
-  if (!db) return;
-
-  const entry = {
+export async function submitCampaignScore(
+  profile: UserProfile,
+  campaignProgress: CampaignProgress
+): Promise<void> {
+  const totalStars = getTotalStars(campaignProgress);
+  await api.submitBoardEntry({
+    board: 'campaign',
+    score: totalStars,
     displayName: profile.displayName,
-    photoURL: profile.photoURL ?? null,
+    photoURL: profile.photoURL,
     playerLevel: profile.playerLevel,
-    score: getTotalStars(campaignProgress),
-    totalStars: getTotalStars(campaignProgress),
+    totalStars,
     furthestLevel: getFurthestLevel(campaignProgress),
-    updatedAt: new Date().toISOString(),
-  };
-
-  await setDoc(doc(db, 'leaderboards', 'campaign', 'entries', profile.uid), entry);
+  });
 }
 
 export async function fetchArcadeLeaderboard(
   weekly = false,
   friendIds?: string[]
 ): Promise<LeaderboardEntry[]> {
-  const db = getFirestoreDb();
-  if (!db) return [];
-
-  const boardId = weekly ? 'arcade_weekly' : 'arcade_alltime';
-  const colRef = collection(db, 'leaderboards', boardId, 'entries');
-  const snap = await getDocs(query(colRef, orderBy('score', 'desc'), limit(50)));
-
-  let entries: LeaderboardEntry[] = snap.docs.map((d) => ({
-    uid: d.id,
-    ...d.data(),
-  })) as LeaderboardEntry[];
-
-  if (weekly) {
-    const cutoff = Date.now() - WEEK_MS;
-    entries = entries.filter((e) => e.updatedAt && new Date(e.updatedAt).getTime() >= cutoff);
-  }
-
+  let entries = await api.fetchBoard({ board: 'arcade', scope: weekly ? 'weekly' : 'global', limit: 50 });
   if (friendIds && friendIds.length > 0) {
     const allowed = new Set(friendIds);
     entries = entries.filter((e) => allowed.has(e.uid));
   }
-
   return entries;
 }
 
 export async function fetchCampaignLeaderboard(friendIds?: string[]): Promise<LeaderboardEntry[]> {
-  const db = getFirestoreDb();
-  if (!db) return [];
-
-  const colRef = collection(db, 'leaderboards', 'campaign', 'entries');
-  const snap = await getDocs(query(colRef, orderBy('totalStars', 'desc'), limit(50)));
-
-  let entries: LeaderboardEntry[] = snap.docs.map((d) => ({
-    uid: d.id,
-    ...d.data(),
-  })) as LeaderboardEntry[];
-
+  let entries = await api.fetchBoard({ board: 'campaign', scope: 'global', limit: 50 });
   if (friendIds && friendIds.length > 0) {
     const allowed = new Set(friendIds);
     entries = entries.filter((e) => allowed.has(e.uid));
   }
-
   return entries;
 }
 
+/**
+ * Regional arcade board. Signature changed from the old `(boardId, weekly)` —
+ * which was buried-bug-prone (the board-id strings written and read never matched)
+ * — to structured country/region. Only caller is `useLeaderboard`.
+ */
 export async function fetchRegionalArcadeLeaderboard(
-  boardId: string,
-  weekly = false
+  countryCode: string | undefined,
+  region?: string,
+  _weekly = false
 ): Promise<LeaderboardEntry[]> {
-  const db = getFirestoreDb();
-  if (!db) return [];
-
-  const colRef = collection(db, 'leaderboards', boardId, 'entries');
-  const snap = await getDocs(query(colRef, orderBy('score', 'desc'), limit(50)));
-
-  let entries: LeaderboardEntry[] = snap.docs.map((d) => ({
-    uid: d.id,
-    ...d.data(),
-  })) as LeaderboardEntry[];
-
-  if (weekly) {
-    const cutoff = Date.now() - WEEK_MS;
-    entries = entries.filter((e) => e.updatedAt && new Date(e.updatedAt).getTime() >= cutoff);
-  }
-
-  return entries;
+  if (!countryCode) return [];
+  return api.fetchBoard({ board: 'arcade', scope: 'regional', country: countryCode, region, limit: 50 });
 }
 
 export async function updateLeaderboardsAfterRun(

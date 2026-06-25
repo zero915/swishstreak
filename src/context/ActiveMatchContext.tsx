@@ -1,9 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
-import { getFirestoreDb } from '../config/firebase';
 import { ActiveMatchDeadline } from '../types';
-import { getOpponentName } from '../services/versusService';
+import { getOpponentName, subscribeVersusMatch } from '../services/versusService';
+import { subscribeTournament } from '../services/tournamentService';
 
 interface ActiveMatchContextValue {
   deadline: ActiveMatchDeadline | null;
@@ -26,16 +25,11 @@ export function ActiveMatchProvider({ children }: { children: React.ReactNode })
       return;
     }
 
-    const db = getFirestoreDb();
-    if (!db) return;
-
-    const unsub = onSnapshot(doc(db, 'versus_matches', profile.activeVersusMatchId), (snap) => {
-      if (!snap.exists()) {
+    const unsub = subscribeVersusMatch(profile.activeVersusMatchId, (match) => {
+      if (!match) {
         setDeadline(null);
         return;
       }
-      const data = snap.data();
-      const match = { id: snap.id, ...data } as import('../types').VersusMatch;
       if (match.status !== 'active') {
         setDeadline(null);
         refreshAuthProfile();
@@ -43,7 +37,7 @@ export function ActiveMatchProvider({ children }: { children: React.ReactNode })
       }
       setDeadline({
         kind: match.tournamentId ? 'tournament' : 'versus',
-        matchId: snap.id,
+        matchId: match.id,
         tournamentId: match.tournamentId,
         opponentName: getOpponentName(match, user.uid),
         currentRound: match.currentRound,
@@ -52,25 +46,22 @@ export function ActiveMatchProvider({ children }: { children: React.ReactNode })
       });
     });
 
-    return () => unsub();
+    return unsub;
   }, [isGuest, user, profile?.activeVersusMatchId, profile?.activeTournamentId, refreshAuthProfile]);
 
   useEffect(() => {
     if (!profile?.activeTournamentId || profile?.activeVersusMatchId) return;
-    const db = getFirestoreDb();
-    if (!db) return;
 
-    const unsub = onSnapshot(doc(db, 'tournaments', profile.activeTournamentId), (snap) => {
-      if (!snap.exists()) {
+    const unsub = subscribeTournament(profile.activeTournamentId, (t) => {
+      if (!t) {
         setDeadline(null);
         return;
       }
-      const t = snap.data();
       if (t.status === 'filling') {
         setDeadline({
           kind: 'tournament',
           matchId: '',
-          tournamentId: snap.id,
+          tournamentId: t.id,
           opponentName: 'Bracket',
           currentRound: 0,
           roundDeadline: t.roundDeadline,
@@ -79,7 +70,7 @@ export function ActiveMatchProvider({ children }: { children: React.ReactNode })
       }
     });
 
-    return () => unsub();
+    return unsub;
   }, [profile?.activeTournamentId, profile?.activeVersusMatchId]);
 
   const value = useMemo(() => ({ deadline, refreshAuthProfile }), [deadline, refreshAuthProfile]);

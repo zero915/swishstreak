@@ -1,48 +1,53 @@
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { getFirestoreDb } from '../config/firebase';
-import { callFunction } from './functionsClient';
 import { VersusMatch } from '../types';
+import * as api from './gameServerClient';
+
+/**
+ * Phase 3 of FIREBASE_MIGRATION.md: versus now runs on game-platform-server
+ * (Cloudflare) instead of Firebase Functions + Firestore. Realtime onSnapshot is
+ * replaced by polling. Public function signatures are unchanged so the versus
+ * screens don't need edits.
+ */
 
 export async function joinVersusQueue(betAmount: number): Promise<{ matchId?: string; queued: boolean }> {
-  return callFunction<{ betAmount: number }, { matchId?: string; queued: boolean }>('joinVersusQueue', {
-    betAmount,
-  });
+  return api.versusJoin(betAmount);
 }
 
 export async function leaveVersusQueue(): Promise<void> {
-  await callFunction<Record<string, never>, { ok: boolean }>('leaveVersusQueue', {});
+  await api.versusLeave();
 }
 
 export async function submitVersusRound(matchId: string, score: number): Promise<{ completed: boolean }> {
-  return callFunction<{ matchId: string; score: number }, { completed: boolean }>('submitVersusRound', {
-    matchId,
-    score,
-  });
+  return api.versusSubmitRound(matchId, score);
 }
 
 export async function getVersusMatch(matchId: string): Promise<VersusMatch | null> {
-  const db = getFirestoreDb();
-  if (!db) return null;
-  const snap = await getDoc(doc(db, 'versus_matches', matchId));
-  if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as VersusMatch;
+  return api.versusGetMatch(matchId);
 }
 
+/** Polling stand-in for the old Firestore onSnapshot. Returns an unsubscribe fn. */
 export function subscribeVersusMatch(
   matchId: string,
   onUpdate: (match: VersusMatch | null) => void
 ): () => void {
-  const db = getFirestoreDb();
-  if (!db) return () => {};
-  return onSnapshot(doc(db, 'versus_matches', matchId), (snap) => {
-    if (!snap.exists()) {
-      onUpdate(null);
-      return;
+  let active = true;
+  const poll = async () => {
+    if (!active) return;
+    try {
+      const match = await api.versusGetMatch(matchId);
+      if (active) onUpdate(match);
+    } catch {
+      // transient network error — next tick retries
     }
-    onUpdate({ id: snap.id, ...snap.data() } as VersusMatch);
-  });
+  };
+  void poll();
+  const interval = setInterval(poll, 3000);
+  return () => {
+    active = false;
+    clearInterval(interval);
+  };
 }
 
+// ── pure helpers (unchanged) ──
 export function getOpponentName(match: VersusMatch, myUid: string): string {
   if (match.playerA.uid === myUid) return match.playerB.displayName;
   return match.playerA.displayName;

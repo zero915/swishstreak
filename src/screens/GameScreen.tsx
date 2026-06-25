@@ -12,6 +12,7 @@ import { LevelResultModal } from '../components/LevelResultModal';
 import { MakeCelebration } from '../components/MakeCelebration';
 import type { CelebrationMeta } from '../components/MakeCelebration';
 import { RunSummaryModal } from '../components/RunSummaryModal';
+import { ScoreCard } from '../components/ScoreCard';
 import { getCampaignLevel } from '../constants/campaignLevels';
 import {
   MAX_MULTIPLIER,
@@ -22,6 +23,7 @@ import {
 import { usePlayerData } from '../context/PlayerDataContext';
 import { useAuth } from '../context/AuthContext';
 import { shareArcadeScore } from '../services/friendsService';
+import { shareScoreCardImage } from '../services/scoreCardShare';
 import { submitVersusRound } from '../services/versusService';
 import { useGameSession } from '../hooks/useGameSession';
 import { RootStackParamList } from '../types';
@@ -258,10 +260,14 @@ export function GameScreen({ route, navigation }: Props) {
     setShowSummary(false);
   }, [getRunSummary, recordArcadeRunEnd, versusMatchId, refreshProfile]);
 
+  const scoreCardRef = useRef<View>(null);
   const handleShareScore = useCallback(async () => {
     const summary = getRunSummary();
     if (!profile) return;
-    await shareArcadeScore(profile.displayName, summary.score, summary.bestStreak, profile.inviteCode);
+    // Try the image score card; fall back to a text share (e.g. inside Expo Go).
+    await shareScoreCardImage(scoreCardRef, () =>
+      shareArcadeScore(profile.displayName, summary.score, summary.bestStreak, profile.inviteCode)
+    );
   }, [getRunSummary, profile]);
 
   const handleLevelContinue = useCallback(async () => {
@@ -380,6 +386,19 @@ export function GameScreen({ route, navigation }: Props) {
         onContinue={handleLevelContinue}
         onRetry={handleLevelRetry}
       />
+
+      {/* Off-screen card captured for image sharing. */}
+      {showSummary && profile && (
+        <View style={styles.offscreen} pointerEvents="none">
+          <ScoreCard
+            ref={scoreCardRef}
+            displayName={profile.displayName}
+            score={getRunSummary().score}
+            streak={getRunSummary().bestStreak}
+            inviteCode={profile.inviteCode}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -403,5 +422,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 15,
+  },
+  offscreen: {
+    position: 'absolute',
+    left: -10000,
+    top: 0,
   },
 });
