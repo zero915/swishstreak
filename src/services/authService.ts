@@ -10,14 +10,14 @@ import {
   signInWithCredential,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
-import { FACEBOOK_APP_ID, GOOGLE_WEB_CLIENT_ID, getFirebaseAuth, isFirebaseConfigured } from '../config/firebase';
+import { FACEBOOK_APP_ID, GOOGLE_ANDROID_CLIENT_ID, GOOGLE_WEB_CLIENT_ID, getFirebaseAuth, isFirebaseConfigured } from '../config/firebase';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export function useGoogleAuth() {
   return Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
   });
 }
 

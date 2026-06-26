@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as Facebook from 'expo-auth-session/providers/facebook';
-import { FACEBOOK_APP_ID, GOOGLE_WEB_CLIENT_ID } from '../config/firebase';
+import { FACEBOOK_APP_ID, GOOGLE_ANDROID_CLIENT_ID, GOOGLE_WEB_CLIENT_ID } from '../config/firebase';
 import { canUseFacebookAuth, canUseGoogleAuth } from '../services/authService';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
@@ -24,7 +24,7 @@ export function SignInPrompt({ message }: SignInPromptProps) {
 
   const [gReq, gRes, gPrompt] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
   });
   const [fReq, fRes, fPrompt] = Facebook.useAuthRequest({ clientId: FACEBOOK_APP_ID });
 

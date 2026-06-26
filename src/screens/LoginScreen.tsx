@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Google from 'expo-auth-session/providers/google';
 import * as Facebook from 'expo-auth-session/providers/facebook';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
-import { FACEBOOK_APP_ID, GOOGLE_WEB_CLIENT_ID, isFirebaseConfigured } from '../config/firebase';
+import { FACEBOOK_APP_ID, GOOGLE_ANDROID_CLIENT_ID, GOOGLE_WEB_CLIENT_ID, isFirebaseConfigured } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { canUseFacebookAuth, canUseGoogleAuth } from '../services/authService';
 
@@ -14,7 +14,7 @@ export function LoginScreen() {
 
   const [googleRequest, googleResponse, promptGoogle] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
   });
 
   const [fbRequest, fbResponse, promptFacebook] = Facebook.useAuthRequest({
