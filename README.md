@@ -119,6 +119,37 @@ npx expo start -c --tunnel
 
 Use `-c` after changing assets or native-related config. If shots feel off, calibrate `VELOCITY_SCALE` and sweet-spot band in `trajectory.ts` — device flick speeds vary.
 
+## Native builds via Android Studio (WSL workaround)
+
+Google/Facebook sign-in **cannot** be tested in Expo Go — Expo's OAuth redirect proxy (`auth.expo.io`) was shut down, and the fallback `exp://` redirect URI isn't accepted by Google/Facebook's OAuth consoles. You need a real dev-client/debug build, with the app's `swishstreak://` scheme registered as the redirect URI in both:
+
+- Google Cloud Console → OAuth client → Authorized redirect URIs
+- Facebook App → Settings → Valid OAuth Redirect URIs
+
+This repo lives in WSL, but `npx expo run:android` fails there (Windows NDK clang can't exec under WSL — see the top-level `CLAUDE.md`), and Android Studio can't get reliable write access to a `\\wsl.localhost\...` path either. The working setup is to build natively from Windows against a **copy** of the project on a real Windows path:
+
+1. **Prebuild the native project** (run from WSL, one-time or after native config changes):
+   ```bash
+   npx expo prebuild --platform android
+   ```
+2. **Copy the project to a native Windows path** — `C:\dev\SwishStreak` is used here. Sync script:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File C:\dev\sync-swishstreak.ps1
+   ```
+   This copies everything except `node_modules`, `.git`, and native build caches (`android\.gradle`, `android\build`, `android\app\build`). Re-run it after any WSL-side change before rebuilding in Android Studio — the two copies do **not** auto-sync.
+3. **Prerequisites on the Windows side** (separate from WSL's Node/Java):
+   - Node.js installed on Windows (Gradle's React Native plugin invokes `node` directly during sync): `winget install OpenJS.NodeJS.LTS`
+   - `gradle/wrapper/gradle-wrapper.properties` should pin a Gradle 8.x release (e.g. `8.13`), not 9.x — Gradle 9 isn't yet compatible with the current React Native/Expo Gradle plugins (`NoSuchFieldError: JvmVendorSpec.IBM_SEMERU` if you hit this).
+4. **Open `C:\dev\SwishStreak\android` in Android Studio**, let Gradle sync, then Run ▶ on an emulator or USB device.
+
+If Gradle sync fails with a stale/corrupted distribution, stop daemons and clear the cache before re-syncing:
+```powershell
+cd C:\dev\SwishStreak\android
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+.\gradlew --stop
+Remove-Item -Recurse -Force "$env:USERPROFILE\.gradle\wrapper\dists\gradle-<version>-bin"
+```
+
 ## AI / Cursor agents
 
 See **[AGENTS.md](./AGENTS.md)** for agent roles, rules, and project skills when using Cursor.
