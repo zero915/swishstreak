@@ -82,7 +82,6 @@ function ProceduralBackground({
 export function CourtBackground({ backgroundId, courtWidth, courtHeight }: CourtBackgroundProps) {
   const item = getShopItem(backgroundId);
   const bgImage = item?.imageSource;
-  const floorTop = courtHeight * 0.68;
 
   if (bgImage) {
     return (
@@ -91,12 +90,6 @@ export function CourtBackground({ backgroundId, courtWidth, courtHeight }: Court
           source={bgImage}
           style={{ width: courtWidth, height: courtHeight }}
           resizeMode="cover"
-        />
-        <LinearGradient
-          colors={['#B0BEC5', '#90A4AE']}
-          style={[styles.shootPad, { top: floorTop, height: courtHeight - floorTop }]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 0.4 }}
         />
       </View>
     );

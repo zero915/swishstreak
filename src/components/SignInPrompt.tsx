@@ -14,11 +14,12 @@ interface SignInPromptProps {
 
 /**
  * Reusable "sign in to unlock this" block with real Google/Facebook buttons.
- * Since guests are signed in anonymously (continueAsGuest), this links the
- * anonymous account to a real provider so progress carries over.
+ * If the player already has an anonymous Firebase account (from continueAsGuest),
+ * this links it to a real provider so progress carries over. If there's no
+ * Firebase account at all yet (e.g. a purely local guest), it signs in fresh.
  */
 export function SignInPrompt({ message }: SignInPromptProps) {
-  const { linkGoogleAccount, linkFacebookAccount } = useAuth();
+  const { user, isAnonymous, linkGoogleAccount, linkFacebookAccount, signInGoogle, signInFacebook } = useAuth();
   const [linking, setLinking] = useState(false);
 
   const [gReq, gRes, gPrompt] = Google.useAuthRequest({
@@ -27,25 +28,29 @@ export function SignInPrompt({ message }: SignInPromptProps) {
   });
   const [fReq, fRes, fPrompt] = Facebook.useAuthRequest({ clientId: FACEBOOK_APP_ID });
 
+  const canLink = !!user && isAnonymous;
+
   useEffect(() => {
     const idToken = gRes?.type === 'success' ? gRes.authentication?.idToken : undefined;
     if (!idToken) return;
     setLinking(true);
-    linkGoogleAccount(idToken)
+    const signIn = canLink ? linkGoogleAccount(idToken) : signInGoogle(idToken);
+    signIn
       .then(() => Alert.alert('Signed in', 'Your progress is now saved to your Google account.'))
       .catch((e) => Alert.alert('Sign-in failed', e instanceof Error ? e.message : String(e)))
       .finally(() => setLinking(false));
-  }, [gRes, linkGoogleAccount]);
+  }, [gRes, canLink, linkGoogleAccount, signInGoogle]);
 
   useEffect(() => {
     const accessToken = fRes?.type === 'success' ? fRes.authentication?.accessToken : undefined;
     if (!accessToken) return;
     setLinking(true);
-    linkFacebookAccount(accessToken)
+    const signIn = canLink ? linkFacebookAccount(accessToken) : signInFacebook(accessToken);
+    signIn
       .then(() => Alert.alert('Signed in', 'Your progress is now saved to your Facebook account.'))
       .catch((e) => Alert.alert('Sign-in failed', e instanceof Error ? e.message : String(e)))
       .finally(() => setLinking(false));
-  }, [fRes, linkFacebookAccount]);
+  }, [fRes, canLink, linkFacebookAccount, signInFacebook]);
 
   const hasGoogle = canUseGoogleAuth();
   const hasFacebook = canUseFacebookAuth();

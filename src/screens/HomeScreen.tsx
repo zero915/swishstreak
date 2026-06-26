@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -19,10 +20,26 @@ type HomeNavigation = CompositeNavigationProp<
 export function HomeScreen() {
   const navigation = useNavigation<HomeNavigation>();
   const { data, claimDailyBonus, dailyBonusAvailable, dailyBonusTimeLeft } = usePlayerData();
-  const { isGuest, isAnonymous, profile, signOut } = useAuth();
+  const { isGuest, isAnonymous, profile, signOut, continueAsGuest } = useAuth();
+  const [enablingOnline, setEnablingOnline] = useState(false);
 
   const hoursLeft = Math.floor(dailyBonusTimeLeft / (1000 * 60 * 60));
   const minutesLeft = Math.floor((dailyBonusTimeLeft % (1000 * 60 * 60)) / (1000 * 60));
+
+  const enableOnlinePlay = async () => {
+    setEnablingOnline(true);
+    try {
+      await continueAsGuest();
+    } catch (e) {
+      Alert.alert(
+        'Online play unavailable',
+        'Enable Anonymous sign-in in Firebase Console → Authentication → Sign-in method, then try again.\n\n' +
+          (e instanceof Error ? e.message : String(e))
+      );
+    } finally {
+      setEnablingOnline(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -47,7 +64,16 @@ export function HomeScreen() {
             )}
           </View>
           <PlayerLevelBar level={data.playerLevel} totalXP={data.totalXP} />
-          {isAnonymous && (
+          {isGuest && !isAnonymous && (
+            <Pressable style={styles.enableOnline} onPress={enableOnlinePlay} disabled={enablingOnline}>
+              {enablingOnline ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text style={styles.enableOnlineText}>Play anonymously online (1v1 & tournaments)</Text>
+              )}
+            </Pressable>
+          )}
+          {(isGuest || isAnonymous) && (
             <SignInPrompt message="save your progress and unlock 1v1, tournaments, and friends." />
           )}
         </View>
@@ -142,6 +168,20 @@ const styles = StyleSheet.create({
   },
   accountInfo: {
     gap: spacing.xs,
+  },
+  enableOnline: {
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    minHeight: touchTarget.minHeight,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  enableOnlineText: {
+    color: colors.primary,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   welcome: {
     ...typography.heading,

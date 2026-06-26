@@ -4,6 +4,16 @@ import { ImageSourcePropType } from 'react-native';
 export const GAME_ASSETS = {
   background: {
     default: require('../../assets/images/background/bg_default.png') as ImageSourcePropType,
+    city: require('../../assets/images/background/bg_city.png') as ImageSourcePropType,
+    sunset: require('../../assets/images/background/bg_sunset.png') as ImageSourcePropType,
+    bones: require('../../assets/images/background/bg_bones.png') as ImageSourcePropType,
+    snow: require('../../assets/images/background/bg_snow.png') as ImageSourcePropType,
+    sky: require('../../assets/images/background/bg_sky.png') as ImageSourcePropType,
+    ocean: require('../../assets/images/background/bg_ocean.png') as ImageSourcePropType,
+    jungle: require('../../assets/images/background/bg_jungle.png') as ImageSourcePropType,
+    starryCourt: require('../../assets/images/background/bg_starry_court.png') as ImageSourcePropType,
+    volcano: require('../../assets/images/background/bg_volcano.png') as ImageSourcePropType,
+    space: require('../../assets/images/background/bg_space.png') as ImageSourcePropType,
   },
   ball: {
     classic: require('../../assets/images/ball/ball_classic.png') as ImageSourcePropType,
