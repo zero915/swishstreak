@@ -3,6 +3,7 @@ import { DEFAULT_PLAYER_DATA } from '../constants/gameConfig';
 import { getFirebaseAuth } from '../config/firebase';
 import { PlayerData, UserLocation, UserProfile } from '../types';
 import { mergePlayerData } from '../utils/mergeProgress';
+import { generateRandomUsername } from '../utils/randomUsername';
 import { xpToLevel } from '../utils/xp';
 import * as api from './gameServerClient';
 
@@ -44,7 +45,9 @@ export async function createOrUpdateUserProfile(
       const updated: UserProfile = {
         ...existing,
         ...merged,
-        displayName: user.displayName ?? existing.displayName,
+        // Keep the player's chosen/randomly-assigned name — never overwrite it with
+        // the social provider's real name on subsequent logins.
+        displayName: existing.displayName,
         photoURL: user.photoURL ?? existing.photoURL,
         playerLevel: xpToLevel(merged.totalXP),
       };
@@ -61,7 +64,9 @@ export async function createOrUpdateUserProfile(
       : undefined;
   const profile: UserProfile = {
     uid: user.uid,
-    displayName: user.displayName ?? 'Player',
+    // Assign a random handle rather than the social provider's real name —
+    // the player can rename themselves later via setDisplayName().
+    displayName: generateRandomUsername(),
     photoURL: user.photoURL ?? undefined,
     provider,
     facebookId,
@@ -73,6 +78,13 @@ export async function createOrUpdateUserProfile(
 
   await api.putMyProfile(profile);
   return profile;
+}
+
+export async function setDisplayName(displayName: string): Promise<void> {
+  if (!signedIn()) return;
+  const trimmed = displayName.trim();
+  if (!trimmed) return;
+  await api.patchMyProfile({ displayName: trimmed });
 }
 
 export async function saveUserProgress(uid: string, data: Partial<PlayerData>): Promise<void> {

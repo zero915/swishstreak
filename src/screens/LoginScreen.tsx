@@ -6,7 +6,7 @@ import * as Facebook from 'expo-auth-session/providers/facebook';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
 import { FACEBOOK_APP_ID, GOOGLE_ANDROID_CLIENT_ID, GOOGLE_WEB_CLIENT_ID, isFirebaseConfigured } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { canUseFacebookAuth, canUseGoogleAuth } from '../services/authService';
+import { GOOGLE_REDIRECT_URI, canUseFacebookAuth, canUseGoogleAuth } from '../services/authService';
 
 export function LoginScreen() {
   const { signInGoogle, signInFacebook, continueAsGuest, isFirebaseReady, isLoading, user } = useAuth();
@@ -15,6 +15,7 @@ export function LoginScreen() {
   const [googleRequest, googleResponse, promptGoogle] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    redirectUri: GOOGLE_REDIRECT_URI,
   });
 
   const [fbRequest, fbResponse, promptFacebook] = Facebook.useAuthRequest({

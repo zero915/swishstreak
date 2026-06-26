@@ -61,7 +61,7 @@ export function VersusScreen({ navigation }: Props) {
       if (result.matchId) {
         Alert.alert('Match found!', 'Your 1v1 has started.');
       } else {
-        Alert.alert('Searching…', 'Looking for an opponent. A bot joins after 30s if needed.');
+        Alert.alert('Searching…', 'Looking for an opponent.');
       }
     } catch (e) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Could not join queue');

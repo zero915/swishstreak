@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Avatar } from './Avatar';
 import { colors, spacing, typography } from '../constants/theme';
 import { LeaderboardEntry } from '../types';
 
@@ -13,8 +14,8 @@ export function LeaderboardRow({ entry, rank, isCurrentUser, scoreDelta }: Leade
   return (
     <View style={[styles.row, isCurrentUser && styles.highlight]}>
       <Text style={styles.rank}>#{rank}</Text>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{entry.displayName.charAt(0).toUpperCase()}</Text>
+      <View style={styles.avatarWrap}>
+        <Avatar displayName={entry.displayName} photoURL={entry.photoURL} size={36} />
       </View>
       <View style={styles.info}>
         <Text style={styles.name}>{entry.displayName}</Text>
@@ -49,18 +50,8 @@ const styles = StyleSheet.create({
     width: 36,
     color: colors.textSecondary,
   },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatarWrap: {
     marginRight: spacing.sm,
-  },
-  avatarText: {
-    color: '#fff',
-    fontWeight: '700',
   },
   info: {
     flex: 1,

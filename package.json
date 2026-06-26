@@ -35,12 +35,13 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "EXPO_UNSTABLE_HEADLESS=1 expo start",
+    "start": "expo start",
+    "start:clear": "expo start -c",
     "start:tunnel": "expo start -c --tunnel",
-    "start:debug": "expo start",
-    "android": "EXPO_UNSTABLE_HEADLESS=1 expo start --android",
-    "ios": "EXPO_UNSTABLE_HEADLESS=1 expo start --ios",
-    "web": "EXPO_UNSTABLE_HEADLESS=1 expo start --web",
+    "start:debug": "EXPO_UNSTABLE_HEADLESS=0 expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
     "android:native": "bash scripts/run-android.sh",
     "test": "npx tsx --test src/utils/shotPhysics.test.ts"
   },

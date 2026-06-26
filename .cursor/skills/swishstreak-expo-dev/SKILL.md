@@ -11,13 +11,17 @@ description: Run and debug Swish Streak on Expo Go SDK 56, including WSL tunnel 
 npm install
 npm run start:tunnel    # physical device via tunnel
 # or
-npm run start:debug     # Metro UI visible
+npm run start:clear     # clear Metro cache
+# or
+npm run start:debug     # with DevTools shell (may fail on WSL)
 ```
 
 Clear cache after asset or native dep changes:
 
 ```bash
-npx expo start -c --tunnel
+npm run start:clear
+# or with tunnel:
+npm run start:tunnel
 ```
 
 ## Device requirements
@@ -29,6 +33,7 @@ npx expo start -c --tunnel
 
 | Symptom | Fix |
 |---------|-----|
+| React Native DevTools / zygote error on start | Add `EXPO_UNSTABLE_HEADLESS=1` to `.env` (see `.env.example`) |
 | Reanimated/worklets error | Ensure `react-native-worklets@0.8.3` installed; babel preset includes reanimated plugin |
 | Stale assets | `-c` clear cache |
 | Cannot connect | Use `--tunnel`; check Expo Go version |
@@ -36,7 +41,9 @@ npx expo start -c --tunnel
 
 ## Scripts (package.json)
 
-- `start` — headless Expo (`EXPO_UNSTABLE_HEADLESS=1`)
+- `start` / `start:clear` — Metro dev server (headless on WSL via `.env`)
+- `start:tunnel` — clear cache + tunnel for physical devices
+- `start:debug` — tries DevTools shell (often fails on WSL)
 - `android` / `ios` / `web` — platform shortcuts
 
 ## Do not

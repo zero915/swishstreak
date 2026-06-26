@@ -1,5 +1,6 @@
 import * as Google from 'expo-auth-session/providers/google';
 import * as Facebook from 'expo-auth-session/providers/facebook';
+import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import {
   FacebookAuthProvider,
@@ -14,10 +15,18 @@ import { FACEBOOK_APP_ID, GOOGLE_ANDROID_CLIENT_ID, GOOGLE_WEB_CLIENT_ID, getFir
 
 WebBrowser.maybeCompleteAuthSession();
 
+// expo-auth-session's Google provider defaults to a redirect URI based on the
+// app's package name (e.g. com.bryan.swishstreak:/oauthredirect), but only the
+// app.json `scheme` ("swishstreak") is registered as an intent filter in the
+// Android manifest. Without this override, Android has no app to hand the
+// OAuth redirect back to, and the browser just keeps browsing.
+export const GOOGLE_REDIRECT_URI = makeRedirectUri({ scheme: 'swishstreak', path: 'oauthredirect' });
+
 export function useGoogleAuth() {
   return Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    redirectUri: GOOGLE_REDIRECT_URI,
   });
 }
 

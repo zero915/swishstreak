@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Avatar } from '../components/Avatar';
 import { PlayerLevelBar } from '../components/PlayerLevelBar';
 import { SignInPrompt } from '../components/SignInPrompt';
 import { DAILY_BONUS_COINS, TOURNAMENT_ENTRY_FEE } from '../constants/gameConfig';
 import { colors, spacing, touchTarget, typography } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { usePlayerData } from '../context/PlayerDataContext';
+import { setDisplayName } from '../services/userService';
 import { MainTabParamList, RootStackParamList } from '../types';
 
 type HomeNavigation = CompositeNavigationProp<
@@ -20,11 +22,37 @@ type HomeNavigation = CompositeNavigationProp<
 export function HomeScreen() {
   const navigation = useNavigation<HomeNavigation>();
   const { data, claimDailyBonus, dailyBonusAvailable, dailyBonusTimeLeft } = usePlayerData();
-  const { isGuest, isAnonymous, profile, signOut, continueAsGuest } = useAuth();
+  const { isGuest, isAnonymous, profile, setProfile, signOut, continueAsGuest } = useAuth();
   const [enablingOnline, setEnablingOnline] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   const hoursLeft = Math.floor(dailyBonusTimeLeft / (1000 * 60 * 60));
   const minutesLeft = Math.floor((dailyBonusTimeLeft % (1000 * 60 * 60)) / (1000 * 60));
+
+  const openRename = () => {
+    setNameInput(profile?.displayName ?? '');
+    setRenaming(true);
+  };
+
+  const saveRename = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed || !profile) {
+      setRenaming(false);
+      return;
+    }
+    setSavingName(true);
+    try {
+      await setDisplayName(trimmed);
+      setProfile({ ...profile, displayName: trimmed });
+      setRenaming(false);
+    } catch (e) {
+      Alert.alert('Could not rename', e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const enableOnlinePlay = async () => {
     setEnablingOnline(true);
@@ -49,9 +77,12 @@ export function HomeScreen() {
         {/* Account / progress card */}
         <View style={styles.accountCard}>
           <View style={styles.accountRow}>
+            {!isGuest && profile && <Avatar displayName={profile.displayName} photoURL={profile.photoURL} size={40} />}
             <View style={styles.accountInfo}>
               {!isGuest && profile ? (
-                <Text style={styles.welcome}>Welcome, {profile.displayName}</Text>
+                <Pressable onPress={openRename} hitSlop={8}>
+                  <Text style={styles.welcome}>{profile.displayName} ✎</Text>
+                </Pressable>
               ) : (
                 <Text style={styles.welcome}>Playing as Guest</Text>
               )}
@@ -137,6 +168,30 @@ export function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal visible={renaming} transparent animationType="fade" onRequestClose={() => setRenaming(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Change your name</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={nameInput}
+              onChangeText={setNameInput}
+              placeholder="Your name"
+              maxLength={24}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.modalCancel} onPress={() => setRenaming(false)} disabled={savingName}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.modalSave} onPress={saveRename} disabled={savingName}>
+                {savingName ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalSaveText}>Save</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -163,10 +218,11 @@ const styles = StyleSheet.create({
   },
   accountRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   accountInfo: {
+    flex: 1,
     gap: spacing.xs,
   },
   enableOnline: {
@@ -287,5 +343,61 @@ const styles = StyleSheet.create({
   statValue: {
     ...typography.heading,
     color: colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  modalTitle: {
+    ...typography.heading,
+    color: colors.text,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: colors.background,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    minHeight: touchTarget.minHeight,
+    color: colors.text,
+    ...typography.body,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
+  modalCancel: {
+    minHeight: touchTarget.minHeight,
+    minWidth: touchTarget.minWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  modalCancelText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  modalSave: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    minHeight: touchTarget.minHeight,
+    minWidth: touchTarget.minWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  modalSaveText: {
+    color: '#fff',
+    fontWeight: '700',
   },
 });

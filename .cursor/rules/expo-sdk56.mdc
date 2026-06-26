@@ -16,8 +16,8 @@ Docs: https://docs.expo.dev/versions/v56.0.0/
 
 ## Dev
 
-- Handheld testing: `npm run start:tunnel` or `npx expo start -c --tunnel`
-- `EXPO_UNSTABLE_HEADLESS=1` set in default start script
+- Handheld testing: `npm run start:tunnel` or `npm run start:clear`
+- Set `EXPO_UNSTABLE_HEADLESS=1` in `.env` on WSL/Linux (skips React Native DevTools auto-install)
 - Do not bump SDK or Reanimated without user approval and doc review
 
 ## Env

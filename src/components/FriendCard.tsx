@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Avatar } from './Avatar';
 import { colors, spacing, typography } from '../constants/theme';
 import { FriendProfile } from '../types';
 
@@ -51,8 +52,8 @@ export function FriendCard({ friend, myStats }: FriendCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{friend.displayName.charAt(0).toUpperCase()}</Text>
+        <View style={styles.avatarWrap}>
+          <Avatar displayName={friend.displayName} photoURL={friend.photoURL} size={44} backgroundColor={colors.secondary} />
         </View>
         <View style={styles.info}>
           <Text style={styles.name}>{friend.displayName}</Text>
@@ -81,19 +82,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatarWrap: {
     marginRight: spacing.md,
-  },
-  avatarText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 18,
   },
   info: {
     flex: 1,
