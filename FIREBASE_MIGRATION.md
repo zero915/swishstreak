@@ -42,8 +42,8 @@ What was built:
 - `game-platform-server/src/platform/profiles.ts` — routes mounted at `/api/profiles/:gameId`:
   `GET/PUT/PATCH /me`, `GET /user/:uid`, `GET /by-invite/:code`, `POST /batch`, `POST /friends`.
   The server always stamps the authoritative `uid` from the verified token.
-- `SwishStreak/src/services/gameServerClient.ts` — profile methods added.
-- `SwishStreak/src/services/userService.ts` — rewired off Firestore to the API; **all public
+- `swishstreak/src/services/gameServerClient.ts` — profile methods added.
+- `swishstreak/src/services/userService.ts` — rewired off Firestore to the API; **all public
   function signatures unchanged**, so the rest of the app is untouched. Firebase Auth stays.
 
 **You verify (locally):**
@@ -102,7 +102,7 @@ What was built:
 - **Cron Trigger** (`wrangler.toml [triggers] crons = ["*/2 * * * *"]` + `scheduled` in
   `index.ts` → `runVersusCron`): pairs queue entries waiting >30s with a bot, and forfeits
   rounds past their deadline. Replaces the old `setTimeout` + `onSchedule`.
-- `SwishStreak/src/services/versusService.ts` — rewired off Firebase; `onSnapshot` replaced
+- `swishstreak/src/services/versusService.ts` — rewired off Firebase; `onSnapshot` replaced
   by 3s polling in `subscribeVersusMatch`. Signatures unchanged, so the versus screens are
   untouched.
 
@@ -138,7 +138,7 @@ Code changes applied:
 
 Last step — delete the now-unused files (needs your shell; mine can't reach the WSL mount):
 ```bash
-cd ~/android/SwishStreak
+cd ~/android/swishstreak
 rm -rf functions firebase.json firestore.rules .firebaserc src/services/functionsClient.ts
 npm install        # refresh node_modules / lockfile without firebase-tools
 npx tsc --noEmit   # confirm no dangling imports
