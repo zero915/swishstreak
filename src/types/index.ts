@@ -266,4 +266,5 @@ export type MainTabParamList = {
   Leaderboard: undefined;
   Friends: { code?: string } | undefined;
   Shop: undefined;
+  Settings: undefined;
 };

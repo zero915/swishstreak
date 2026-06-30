@@ -14,6 +14,7 @@ import { LevelMapScreen } from '../screens/LevelMapScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { ShopScreen } from '../screens/ShopScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import { GameScreen } from '../screens/GameScreen';
 import { VersusScreen } from '../screens/VersusScreen';
 import { TournamentScreen } from '../screens/TournamentScreen';
@@ -57,6 +58,11 @@ function MainTabs() {
           name="Shop"
           component={ShopScreen}
           options={{ title: 'Shop', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'bag' : 'bag-outline'} size={size} color={color} /> }}
+        />
+        <Tab.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: 'Settings', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'settings' : 'settings-outline'} size={size} color={color} /> }}
         />
       </Tab.Navigator>
     </View>
